@@ -1,0 +1,6 @@
+{
+  "name": "Hue Custom Dimming",
+  "content_in_root": false,
+  "zip_release": false,
+  "homeassistant": "2025.1.0"
+}

@@ -1,0 +1,41 @@
+start_transition:
+  name: Start Transition
+  description: Start a smooth dimming transition at constant speed.
+  target:
+    entity_id:
+      domain: light
+  fields:
+    direction:
+      name: Direction
+      description: "up" to brighten, "down" to dim.
+      required: true
+      selector:
+        select:
+          options: ["up", "down"]
+    sweep_time:
+      name: Sweep Time
+      description: Time taken to go from 0% to 100%.
+      default: 5
+      selector:
+        number:
+          min: 1
+          max: 3600
+          unit_of_measurement: s
+          mode: box
+    limit:
+      name: Transition Limit
+      description: Optional brightness stop point (e.g., 1% to avoid the light turning off).
+      required: false
+      selector:
+        number:
+          min: 0
+          max: 100
+          unit_of_measurement: "%"
+          mode: slider
+
+stop_transition:
+  name: Stop Transition
+  description: Stop a transition.
+  target:
+    entity_id:
+      domain: light
