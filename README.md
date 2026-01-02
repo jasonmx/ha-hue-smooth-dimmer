@@ -1,4 +1,4 @@
-# Hue Smooth Dimming
+# Hue Smooth Dimming :EMOJICODE🔅: :EMOJICODE💡: :EMOJICODE🔆:
 
 Hue Smooth Dimming adds **silky smooth transitions** to the official Philips Hue integration on v2 Bridges, by leveraging Hue bulbs' native transition capabilities instead of relying on repeated incremental brightness change instructions from Home Assistant.
 
