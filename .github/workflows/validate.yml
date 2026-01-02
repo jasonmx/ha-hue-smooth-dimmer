@@ -15,11 +15,12 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: HomeAssistant Helper Check
-        uses: home-assistant/actions/helpers/custom_components@master
+      - name: HACS Action Check
+        # This is the dedicated repo for custom component validation
+        uses: hacs/action@main
         with:
-          command: validate
-          integration: hue_smooth_dimming
+          category: integration
+          ignore: []
 
       - name: Check for Python Syntax Errors
         run: |
