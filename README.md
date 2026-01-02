@@ -1,6 +1,6 @@
 # Hue Smooth Dimming
 
-Hue Smooth Dimming adds **silky smooth dimming transitions** to the official Philips Hue integration on v2 Bridges, by leveraging Hue bulbs' native transition capabilities instead of relying on repeated incremental brightness change instructions from Home Assistant.
+Hue Smooth Dimming adds **silky smooth dimming transitions** to the official Philips Hue integration, by leveraging Hue bulbs' native transition capabilities instead of relying on repeated incremental brightness change instructions from Home Assistant.
 
 The result is the same premium, high-end feel that you get using Philips Hue's own dimmers, without visual stuttering, lags or overshoots.
 
@@ -14,7 +14,7 @@ The result is the same premium, high-end feel that you get using Philips Hue's o
 
 ## Installation
 
-**Dependency:** Official HA Hue integration connected to a v2 bridge.
+**Dependency:** [Philips Hue integration](https://www.home-assistant.io/integrations/hue) connected to a V2 bridge.
 
 ### Method 1: HACS (Recommended)
 1. Open **HACS** > **Integrations**.
