@@ -15,8 +15,8 @@ This integration eliminates the visual stuttering and network congestion caused 
 ---
 
 ## Requirements:
-* **Hardware:** Philips Hue Bridge V2 (Square version). Legacy V1 (Circular) bridges are not supported.
-* **[Philips Hue integration](https://www.home-assistant.io/integrations/hue)**
+* **Hardware:** Philips Hue Bridge V2. Legacy V1 bridges are not supported.
+* **[Philips Hue integration](https://www.home-assistant.io/integrations/hue)** installed.
 
 ## Installation
 
