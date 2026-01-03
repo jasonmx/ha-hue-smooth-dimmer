@@ -1,6 +1,6 @@
 {
   "domain": "hue_smooth_dimmer",
-  "name": "Hue Smooth Dimmer",
+  "name": "Philips Hue Smooth Dimmer",
   "version": "1.0.0",
   "config_flow": true,
   "documentation": "https://github.com/jasonmx/ha-hue-smooth-dimmer",
@@ -8,5 +8,6 @@
   "codeowners": ["@jasonmx"],
   "dependencies": ["hue"],
   "requirements": [],
-  "iot_class": "local_push"
+  "iot_class": "local_push",
+  "logbook": false
 }

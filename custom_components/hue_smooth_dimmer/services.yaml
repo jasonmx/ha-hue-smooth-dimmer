@@ -8,7 +8,7 @@ raise:
     sweep_time:
       name: Sweep Time
       description: Duration of a full 100-0% transition.
-      default: 10
+      default: 4
       selector:
         number:
           min: 1
@@ -33,7 +33,7 @@ lower:
     sweep_time:
       name: Sweep Time
       description: Duration of a full 0-100% transition.
-      default: 10
+      default: 4
       selector:
         number:
           min: 1
@@ -47,12 +47,6 @@ lower:
           min: 0
           max: 99
           unit_of_measurement: "%"
-    turn_off_at_zero:
-      name: Off at zero
-      description: Turn off light if a transition reaches 0% brightness.
-      default: false
-      selector:
-        boolean:
 
 stop:
   name: Stop

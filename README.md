@@ -2,14 +2,14 @@
 
 [![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
 
-Dim your Hue bulbs smoothly in automations and with non-Hue buttons.
+Dim your Hue bulbs smoothly like a pro in automations and with non-Hue buttons.
 
-This integration eliminates the visual stuttering and network congestion caused by traditional "stepped" dimming loops, by leveraging the native capabilities of the Philips Hue V2 API.
+This integration eliminates the visual stuttering and network congestion caused by traditional "stepped" dimming loops, by leveraging the Philips Hue V2 API's native dimming commands.
 
 ## Key Benefits 🔅💡🔆
 
 * **Silky Smooth:** No more jumpy brightness changes or overshoots in "press to dim, release to stop" automations. Brightness transitions are predictable, continuous and visually polished, mirroring the behavior of a high-quality physical dimmer.
-* **Network Friendly:** By sending only two Hue API commands (Start and Stop) instead of dozens of brightness changes, your home LAN and Hue meshes remain responsive and clear.
+* **Network Friendly:** By sending only two Hue API commands instead of lots of small brightness steps, your home LAN and Hue meshes remain responsive and clear.
 * **One-click configuration:** This helper piggybacks on HA's core Hue integration, so there's no fiddly post-installation setup.
 
 ---
@@ -58,7 +58,6 @@ Initiates a smooth transition toward a lower brightness level.
 | `target` | (Required) | The Hue light(s) or group(s) to control. |
 | `sweep_time` | `10` | Seconds for a full 100-0% transition (s). |
 | `limit` | `0` | Target brightness (e.g., stop at 1%) |
-| `turn_off_at_zero` | `false` | Turn off the light if a transition reaches 0% brightness. |
 
 ### `hue_smooth_dimmer.stop`
 Stops an active transition.
