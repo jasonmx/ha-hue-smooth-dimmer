@@ -47,17 +47,20 @@ Initiates a smooth transition toward a higher brightness level.
 | Field | Default | Description |
 | :--- | :--- | :--- |
 | `target` | (Required) | The Hue light(s) or group(s) to control. |
-| `sweep_time` | `10` | Seconds for a full 0-100% transition. |
-| `limit` | `100` | Target brightness (e.g., stop at 80%). |
+| `sweep_time` | `5` | Seconds for a full 0-100% transition. |
+| `limit` | `100` | Brightness limit (e.g., stop at 80%). |
 
 ### `hue_smooth_dimmer.lower`
-Initiates a smooth transition toward a lower brightness level.
+Initiates a smooth transition toward a lower brightness level, and turns off at 0%.
 
 | Field | Default | Description |
 | :--- | :--- | :--- |
 | `target` | (Required) | The Hue light(s) or group(s) to control. |
-| `sweep_time` | `10` | Seconds for a full 100-0% transition (s). |
-| `limit` | `0` | Target brightness (e.g., stop at 1%) |
+| `sweep_time` | `5` | Seconds for a full 100-0% transition (s). |
+| `limit` | `0` | Brightness limit. Use 0.2% to keep a Hue bulb turned on. |
+
+> [!TIP]
+> The minimum brighness of Hue bulbs is 0.2% for regular bulbs and 2% for Essential bulbs. Source: [this blog post](https://hueblog.com/2025/09/18/new-hue-bulbs-cannot-be-dimmed-any-lower/).
 
 ### `hue_smooth_dimmer.stop`
 Stops an active transition.
@@ -85,4 +88,4 @@ action:
 ```
 
 > [!TIP]
-> **Pro Tip:** For the best performance and perfect synchronization, target **Hue Groups** rather than multiple individual bulbs. This allows the Hue Bridge to send a single Zigbee broadcast, ensuring every light starts and stops at the same moment.
+> For the best performance and perfect synchronization, target **Hue Groups** rather than HA groups or multiple bulbs. This allows the Hue Bridge to send a single Zigbee broadcast, ensuring every light starts and stops at the same moment.

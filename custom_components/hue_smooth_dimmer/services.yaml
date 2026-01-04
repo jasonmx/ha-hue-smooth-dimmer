@@ -8,7 +8,7 @@ raise:
     sweep_time:
       name: Sweep Time
       description: Duration of a full 100-0% transition.
-      default: 4
+      default: 5
       selector:
         number:
           min: 1
@@ -25,7 +25,7 @@ raise:
 
 lower:
   name: Lower
-  description: Start decreasing the brightness.
+  description: Start decreasing the brightness and turn off at 0%. 
   target:
     entity:
       domain: light
@@ -33,7 +33,7 @@ lower:
     sweep_time:
       name: Sweep Time
       description: Duration of a full 0-100% transition.
-      default: 4
+      default: 5
       selector:
         number:
           min: 1
@@ -41,7 +41,7 @@ lower:
           unit_of_measurement: s
     limit:
       name: Target Brightness
-      description: Default is 0%.
+      description: Default is 0%. Use 0.2% to keep the light on.
       selector:
         number:
           min: 0
