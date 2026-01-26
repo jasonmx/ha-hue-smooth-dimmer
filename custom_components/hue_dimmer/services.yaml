@@ -1,6 +1,6 @@
 raise:
   name: Raise
-  description: Start increasing the brightness.
+  description: Start increasing Hue brightness.
   target:
     entity:
       domain: light
@@ -24,7 +24,7 @@ raise:
 
 lower:
   name: Lower
-  description: Start decreasing the brightness and turn off at 0%. 
+  description: Start decreasing Hue brightness. 
   target:
     entity:
       domain: light

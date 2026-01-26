@@ -22,18 +22,12 @@ This integration eliminates the visual stuttering and network congestion caused 
 
 ### Method 1: HACS (Recommended)
 
-1. Click the button below:
-
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jasonmx&repository=ha-hue-smooth-dimmer&category=integration)
-
-2. Click the **Download** button on the repository page.
-3. Restart Home Assistant.
-4. Go to **Settings > Devices & Services > Add Integration** and search for "Philips Hue Smooth Dimmer".
 
 ### Method 2: Manual
 1. Copy the `hue_dimmer` folder to your `/config/custom_components/` directory.
 2. **Restart Home Assistant.**
-3. Go to **Settings > Devices & Services > Add Integration** and search for "Philips Hue Smooth Dimmer".
+3. Go to **Settings > Devices & Services**, click **Add Integration** and search for "Philips Hue Smooth Dimmer".
 
 ---
 
@@ -46,7 +40,7 @@ Starts increasing the brightness.
 
 | Field | Default | Description |
 | :--- | :--- | :--- |
-| `target` | (Required) | The Hue light(s) or group(s) to control. |
+| `target` | (Required) | Hue light(s) or group(s) to control. |
 | `sweep_time` | `5` | Seconds for a full 0-100% transition. |
 | `limit` | `100` | Stop transition at this brightness (default 100%). |
 
@@ -55,7 +49,7 @@ Starts decreasing the brightness, and turns off at 0%.
 
 | Field | Default | Description |
 | :--- | :--- | :--- |
-| `target` | (Required) | The Hue light(s) or group(s) to control. |
+| `target` | (Required) | Hue light(s) or group(s) to control. |
 | `sweep_time` | `5` | Seconds for a full 100-0% transition. |
 | `limit` | `0` | Stop transition at this brightness (default 0%). Choose 0.2% or more to keep a light turned on. |
 
@@ -102,4 +96,4 @@ actions:
 ```
 
 > [!TIP]
-> To synchronize multiple lights, target **Hue Groups** rather than HA groups or multiple individual lights. This allows the Hue Bridge to send a single Zigbee broadcast, which dims all the lights together perfectly.
+> To control multiple lights, target a **Hue Group** rather than multiple individual lights. This allows the Hue Bridge to send a single Zigbee broadcast, which dims all the lights together perfectly.
