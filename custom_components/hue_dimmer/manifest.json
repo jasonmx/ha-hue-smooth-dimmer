@@ -2,7 +2,6 @@
   "domain": "hue_dimmer",
   "name": "Philips Hue Smooth Dimmer",
   "version": "0.1.0",
-  "homeassistant": "2025.1.0",
   "config_flow": true,
   "documentation": "https://github.com/jasonmx/philips-hue-smooth-dimmer",
   "issue_tracker": "https://github.com/jasonmx/philips-hue-smooth-dimmer/issues",
