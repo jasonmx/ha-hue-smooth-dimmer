@@ -21,10 +21,12 @@ This integration eliminates the visual stuttering in HA "stepped" dimming loops,
 ## Installation
 
 1. Open HACS repository
+
 [![Open your Home Assistant instance and open a repository inside the Home Assistant Community Store.](https://my.home-assistant.io/badges/hacs_repository.svg)](https://my.home-assistant.io/redirect/hacs_repository/?owner=jasonmx&repository=philips-hue-smooth-dimmer&category=integration)
-2. Click **Download**
-3. **Restart Home Assistant.**
-4. Go to **Settings > Devices & Services**, click **Add Integration** and choose "Philips Hue Smooth Dimmer".
+
+3. Click **Download**
+4. Restart Home Assistant.
+5. Go to **Settings > Devices & Services**, click **Add Integration** and choose "Philips Hue Smooth Dimmer".
 
 ---
 
