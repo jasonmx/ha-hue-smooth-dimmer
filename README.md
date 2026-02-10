@@ -1,6 +1,6 @@
 # Philips Hue Smooth Dimmer
 
-[![hacs_badge](https://img.shields.io/badge/HACS-Custom-orange.svg)](https://github.com/hacs/integration)
+[![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/) ![Version](https://img.shields.io/github/v/release/jasonmx/philips-hue-smooth-dimmer)
 
 Dim your Hue bulbs smoothly in "press to dim, release to stop" automations.
 
