@@ -30,16 +30,16 @@ This integration eliminates the visual stuttering in HA "stepped" dimming loops,
 
 ---
 
-## Services
+## Automation Actions
 
-After installation, you'll find 3 new services in the automation Actions list. You can also use them in Developer Tools -> Actions. 
+After installation, you'll find 3 new automation actions in the Actions list. 
 
 ### `hue_dimmer.raise`
 Starts increasing the brightness.
 
 | Field | Default | Description |
 | :--- | :--- | :--- |
-| `target` | (Required) | Hue light(s) or group(s) to control. |
+| `target` | (Required) | Hue light(s) or Hue group(s) to control. |
 | `sweep_time` | `5` | Seconds for a full 0-100% transition. |
 | `limit` | `100` | Stop transition at this brightness (default 100%). |
 
@@ -48,7 +48,7 @@ Starts decreasing the brightness, and turns off at 0%.
 
 | Field | Default | Description |
 | :--- | :--- | :--- |
-| `target` | (Required) | Hue light(s) or group(s) to control. |
+| `target` | (Required) | Hue light(s) or Hue group(s) to control. |
 | `sweep_time` | `5` | Seconds for a full 100-0% transition. |
 | `limit` | `0` | Stop transition at this brightness (default 0%). Choose 0.2% or more to keep a light turned on. |
 
