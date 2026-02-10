@@ -14,8 +14,8 @@ raise:
           max: 60
           unit_of_measurement: s
     limit:
-      name: Target brightness
-      description: Transition end point (default 100%).
+      name: Maximum brightness limit
+      description: Default 100%
       selector:
         number:
           min: 1
@@ -38,8 +38,8 @@ lower:
           max: 60
           unit_of_measurement: s
     limit:
-      name: Target brightness
-      description: Transition end point (default 0%). Choose 0.2% or more to keep a light turned on.
+      name: Minimum brightness limit
+      description: Default 0% (turns off). Choose 0.2%+ to keep a light turned on.
       selector:
         number:
           min: 0
@@ -48,7 +48,7 @@ lower:
 
 stop:
   name: Stop
-  description: Stop a brightness transition.
+  description: Stop a Hue brightness transition.
   target:
     entity:
       domain: light
