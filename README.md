@@ -38,22 +38,22 @@ This integration eliminates the visual stuttering in HA "stepped" dimming loops,
 After installation, you'll find 3 new automation actions in the Actions list. 
 
 ### `hue_dimmer.raise`
-Starts increasing the brightness.
+Starts increasing the brightness up to the limit.
 
 | Field | Default | Description |
 | :--- | :--- | :--- |
 | `target` | (Required) | Hue light(s) or Hue group(s) |
 | `sweep_time` | `5` | Duration (seconds) of a full 0-100% transition |
-| `limit` | `100` | Maximum brightness (%) |
+| `limit` | `100` | Maximum brightness limit (%) |
 
 ### `hue_dimmer.lower`
-Starts decreasing the brightness, and turns off at 0%.
+Starts decreasing the brightness down to the limit. Turns light off if brightness falls to 0%.
 
 | Field | Default | Description |
 | :--- | :--- | :--- |
 | `target` | (Required) | Hue light(s) or Hue group(s) |
 | `sweep_time` | `5` | Duration (seconds) of a full 100-0% transition  |
-| `limit` | `0` | Minimum brightness (%). Choose >= 0.2% to stay turned on (see tip). |
+| `limit` | `0` | Minimum brightness limit (%). Choose 0.2%+ to keep a light turned on (see tip). |
 
 > [!TIP]
 > Hue's minimum supported brightness is 0.2% for regular bulbs and 2.0% for Essential bulbs. Source: [Hueblog post](https://hueblog.com/2025/09/18/new-hue-bulbs-cannot-be-dimmed-any-lower/).
