@@ -15,8 +15,11 @@ This integration eliminates the visual stuttering in HA "stepped" dimming loops,
 ---
 
 ## Requirements:
-* **Hardware:** Philips Hue Bridge V2. The original V1 bridge isn't supported as it uses different API dimming methods.
-* **[Philips Hue integration](https://www.home-assistant.io/integrations/hue)** installed.
+* **[Philips Hue integration](https://www.home-assistant.io/integrations/hue)** installed and configured.
+* **Hardware:** Philips Hue Bridge V2.
+
+> [!NOTE]
+> The original Bridge V1 is unsupported as it uses different API methods and I didn't have a V1 to test.
 
 ## Installation
 
