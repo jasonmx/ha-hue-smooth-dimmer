@@ -4,7 +4,7 @@
 
 Dim your Hue bulbs smoothly in "press to dim, release to stop" automations.
 
-This integration eliminates the visual stuttering in HA "stepped" dimming loops, by using Hue's native API dimming methods.
+This integration eliminates the visual stuttering in HA "stepped" dimming loops, by implementing the Hue V2 API's native dimming methods.
 
 ## Key Benefits 🔅💡🔆
 
