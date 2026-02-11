@@ -47,7 +47,7 @@ Starts increasing the brightness up to the limit.
 | `limit` | `100` | Maximum brightness limit (%) |
 
 ### `hue_dimmer.lower`
-Starts decreasing the brightness down to the limit. Turns light off if brightness falls to 0%.
+Starts decreasing the brightness down to the limit. Light turns off at 0%.
 
 | Field | Default | Description |
 | :--- | :--- | :--- |
