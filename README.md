@@ -19,7 +19,7 @@ This integration eliminates the visual stuttering in HA "stepped" dimming loops,
 * **Hardware:** Philips Hue Bridge V2.
 
 > [!NOTE]
-> Bridge V1 is unsupported as it uses different API methods and I don't have a V1 to test.
+> Bridge V1 is unsupported, as it uses different API methods and I don't have a V1 to test.
 
 ## Installation
 
@@ -53,9 +53,9 @@ Starts decreasing the brightness down to the limit. Turns light off if brightnes
 | :--- | :--- | :--- |
 | `target` | (Required) | Hue light(s) or Hue group(s) |
 | `sweep_time` | `5` | Duration (seconds) of a full 100-0% transition  |
-| `limit` | `0` | Minimum brightness limit (%). Choose 0.2%+ to keep a light turned on (see tip). |
+| `limit` | `0` | Minimum brightness limit (%). Choose 0.2%+ to keep a light turned on (see note). |
 
-> [!TIP]
+> [!NOTE]
 > Hue's minimum supported brightness is 0.2% for regular bulbs and 2.0% for Essential bulbs. Source: [Hueblog post](https://hueblog.com/2025/09/18/new-hue-bulbs-cannot-be-dimmed-any-lower/).
 
 ### `hue_dimmer.stop`
