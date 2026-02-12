@@ -177,14 +177,7 @@ async def _handle_transition(hass: HomeAssistant, call: ServiceCall, direction: 
     for entity_id in call.data.get("entity_id", []):
         bridge, resource_type, resource_id = await get_bridge_and_id(hass, entity_id)
         if bridge and resource_id:
-            await start_transition(
-                bridge,
-                resource_type,
-                resource_id,
-                direction,
-                sweep,
-                limit,
-            )
+            await start_transition(bridge, resource_type, resource_id, direction, sweep, limit)
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):

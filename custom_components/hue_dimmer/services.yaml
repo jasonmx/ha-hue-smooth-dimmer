@@ -11,7 +11,7 @@ raise:
       selector:
         number:
           min: 1
-          max: 60
+          max: 10
           unit_of_measurement: s
     limit:
       name: Maximum brightness limit
@@ -39,7 +39,7 @@ lower:
           unit_of_measurement: s
     limit:
       name: Minimum brightness limit
-      description: Default 0% (turns off). Choose 0.2%+ to keep a light turned on.
+      description: Default 0% (turns off). Choose 0.2%+ to keep a light turned on (2.0%+ for Hue Essential).
       selector:
         number:
           min: 0
@@ -48,7 +48,7 @@ lower:
 
 stop:
   name: Stop
-  description: Stop a Hue brightness transition.
+  description: Stop an active transition.
   target:
     entity:
       domain: light

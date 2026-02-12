@@ -15,11 +15,8 @@ This integration eliminates the visual stuttering in HA "stepped" dimming loops,
 ---
 
 ## Requirements:
-* **[Philips Hue integration](https://www.home-assistant.io/integrations/hue)** installed and configured.
 * **Hardware:** Philips Hue Bridge V2 or Pro (V3).
-
-> [!NOTE]
-> Bridge V1 is unsupported, as the V1 API uses different methods.
+* **[Philips Hue integration](https://www.home-assistant.io/integrations/hue)** installed and configured.
 
 ## Installation
 
@@ -35,65 +32,70 @@ This integration eliminates the visual stuttering in HA "stepped" dimming loops,
 
 ## Usage
 
-After installation, you'll find 3 new automation actions in the Actions list.
-
-> [!TIP]
-> To dim multiple lights perfectly, target a **Hue Group** instead of individual Hue lights. The Hue Bridge will then keep them in sync via a single Zigbee broadcast.
+Add these 3 actions to your automations.
 
 ### `hue_dimmer.raise`
-Starts increasing the brightness up to the limit.
+<details>
+<summary> Starts increasing the brightness. </summary>
 
 | Field | Default | Description |
-| :--- | :--- | :--- |
+| :--- | :---: | :--- |
 | `target` | (Required) | Hue light(s) or Hue group(s) |
 | `sweep_time` | `5` | Duration (seconds) of a full 0-100% sweep |
 | `limit` | `100` | Maximum brightness limit (%) |
 
+To dim multiple lights, target a Hue Group instead of separate entities. Your bridge then syncs them via a single Zigbee broadcast.
+
+</details>
+
 ### `hue_dimmer.lower`
-Starts decreasing the brightness down to the limit. Light turns off at 0%.
+<details>
+<summary> Starts decreasing the brightness. Light turns off at 0%. </summary>
 
 | Field | Default | Description |
-| :--- | :--- | :--- |
+| :--- | :---: | :--- |
 | `target` | (Required) | Hue light(s) or Hue group(s) |
 | `sweep_time` | `5` | Duration (seconds) of a full 100-0% sweep  |
-| `limit` | `0` | Minimum brightness limit (%). Choose 0.2%+ to keep a light turned on (see note). |
+| `limit` | `0` | Minimum brightness limit (%). Choose 0.2%+ to keep a light turned on (2.0%+ for Hue Essential). |
 
-> [!NOTE]
-> Hue's minimum supported brightness is 0.2% for regular bulbs and 2.0% for Essential bulbs. Source: [Hueblog post](https://hueblog.com/2025/09/18/new-hue-bulbs-cannot-be-dimmed-any-lower/).
+To dim multiple lights, target a Hue Group instead of separate entities. Your bridge then syncs them via a single Zigbee broadcast.
+
+</details>
 
 ### `hue_dimmer.stop`
-Stops an active transition.
+<details>
+<summary> Stops an active transition. </summary>
 
 | Field | Description |
 | :--- | :--- |
 | `target` | Hue light(s) or Hue group(s) |
 
+</details>
+
 ---
 
-## Example Usage
+Automation Example
 
 To dim your Hue lights smoothly with a two-button remote:
 
 ```yaml
 actions:
   - choose:
-      - conditions:
+      - conditions: # Hold left button to lower brightness
           - condition: trigger
-            id:
-              - long_press_left
+            id: long_press_left
         sequence:
           - action: hue_dimmer.lower
             target:
               entity_id: light.living_room
-      - conditions:
+      - conditions: # Hold right button to raise brightness
           - condition: trigger
-            id:
-              - long_press_right
+            id: long_press_right
         sequence:
           - action: hue_dimmer.raise
             target:
               entity_id: light.living_room
-      - conditions:
+      - conditions: # Release button to stop brightness transition
           - condition: trigger
             id:
               - release_left
