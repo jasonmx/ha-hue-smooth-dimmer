@@ -4,12 +4,12 @@
 
 Dim your Hue bulbs smoothly in "press to dim, release to stop" automations.
 
-This integration eliminates the visual stuttering in HA "stepped" dimming loops, by implementing the Hue V2 API's dim-stop methods.
+This integration eliminates the visual stuttering in HA "stepped" dimming loops, using the Hue API's dim-stop methods.
 
 ## Key Benefits 🔅💡🔆
 
 * **Silky Smooth:** No more jumpy brightness changes or overshoots in "press to dim" automations. Dimming is continuous and precise, mirroring a high-quality physical dimmer.
-* **Instant Setup:** Communicates with your Hue bridges and lights via the core Philips Hue integration. 
+* **Zero Setup:** Connects to your Hue bridge automatically via the core Philips Hue integration.
 * **Network Friendly:** With less chatter between HA and your lights, your home network and Hue mesh remain responsive and clear.
 
 ---
@@ -33,9 +33,12 @@ This integration eliminates the visual stuttering in HA "stepped" dimming loops,
 
 ---
 
-## Automation Actions
+## Usage
 
-After installation, you'll find 3 new automation actions in the Actions list. 
+After installation, you'll find 3 new automation actions in the Actions list.
+
+> [!TIP]
+> To dim multiple lights perfectly, target a **Hue Group** instead of individual Hue lights. The Hue Bridge will then keep them in sync via a single Zigbee broadcast.
 
 ### `hue_dimmer.raise`
 Starts increasing the brightness up to the limit.
@@ -43,7 +46,7 @@ Starts increasing the brightness up to the limit.
 | Field | Default | Description |
 | :--- | :--- | :--- |
 | `target` | (Required) | Hue light(s) or Hue group(s) |
-| `sweep_time` | `5` | Duration (seconds) of a full 0-100% transition |
+| `sweep_time` | `5` | Duration (seconds) of a full 0-100% sweep |
 | `limit` | `100` | Maximum brightness limit (%) |
 
 ### `hue_dimmer.lower`
@@ -52,7 +55,7 @@ Starts decreasing the brightness down to the limit. Light turns off at 0%.
 | Field | Default | Description |
 | :--- | :--- | :--- |
 | `target` | (Required) | Hue light(s) or Hue group(s) |
-| `sweep_time` | `5` | Duration (seconds) of a full 100-0% transition  |
+| `sweep_time` | `5` | Duration (seconds) of a full 100-0% sweep  |
 | `limit` | `0` | Minimum brightness limit (%). Choose 0.2%+ to keep a light turned on (see note). |
 
 > [!NOTE]
@@ -100,6 +103,3 @@ actions:
             target:
               entity_id: light.living_room
 ```
-
-> [!TIP]
-> To control multiple lights, target a **Hue Group** rather than multiple individual lights. This allows the Hue Bridge to send a single Zigbee broadcast, which dims all the lights together perfectly.

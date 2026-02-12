@@ -1,6 +1,8 @@
 import voluptuous as vol
 from homeassistant import config_entries
+
 from .const import DOMAIN
+
 
 class HueDimmerConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Philips Hue Smooth Dimmer."""

@@ -1,5 +1,21 @@
+# Byte-compiled / cache
 __pycache__/
-*.pyc
-.DS_Store
-.vscode/
+*.py[cod]
+.*_cache
+
+# Secrets
 .env
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# VS Code
+.vscode/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
