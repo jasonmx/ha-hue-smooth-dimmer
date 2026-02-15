@@ -139,7 +139,7 @@ async def start_transition(hass, bridge, resource_type, resource_id, entity_id, 
 
     _LOGGER.debug("CALC [%s]: %.1f%% -> %.1f%% | Dur: %dms", entity_id, current_bright, limit, dur_ms)
 
-    if distance < 0.2:  # Min brightness step is 0.2%
+    if distance < 0.4:  # Min brightness step is 0.4% (1/254)
         return
 
     _brightness_cache[entity_id] = {

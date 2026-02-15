@@ -1,10 +1,10 @@
 # Philips Hue Smooth Dimmer
 
-[![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/) ![Version](https://img.shields.io/github/v/release/jasonmx/philips-hue-smooth-dimmer)
+[![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/) ![Installs](https://img.shields.io/badge/dynamic/json?color=blue&label=Installs&query=hue_dimmer.total&url=https://analytics.home-assistant.io/custom_integrations.json) ![Latest Version](https://img.shields.io/github/v/release/jasonmx/philips-hue-smooth-dimmer)
 
 This integration extends the core Philips Hue integration and lets you:
 * Use third-party buttons to dim your Hue lights smoothly.
-* Set brightness and color temperature while lights are off.
+* Set a light's turn-on brightness and color temp while it's turned off.
 
 ## Key Benefits 🔅💡🔆
 
@@ -56,7 +56,7 @@ Use these 3 actions in the Home Assistant automation editor:
 | :--- | :--- |
 | `target` | Hue lights and groups |
 | `sweep_time` | Duration of 100-0% sweep (default 5s)  |
-| `limit` | Minimum brightness limit (default 0%). Light turns off at 0%. Choose 0.2%+ to keep standard Hue lights turned on, and 2%+ for Essential series. |
+| `limit` | Minimum brightness limit (default 0%). Light turns off at 0%. Choose 0.4%+ to keep standard Hue lights on, and 2%+ for Essential series. |
 
 </details>
 
@@ -90,7 +90,7 @@ actions:
               entity_id: light.living_room
             data:
               sweep_time: 4
-              limit: 0.2
+              limit: 0.4
 
       # Hold right button to raise brightness
       - conditions:
@@ -131,7 +131,7 @@ Example use cases:
 | Field | Description |
 | :--- | :--- |
 | `target` | Hue lights and groups |
-| `brightness` | Brightness level, 0.2–100% |
+| `brightness` | Brightness level, 0.4–100% |
 | `color_temp_kelvin` | Color temperature in Kelvin (CT lights only) |
 
 </details>

@@ -9,21 +9,22 @@
 # 1. Go to Settings -> Automations
 # 2. Click "Create automation" and choose "Create new automation" (top entry)
 # 3. Switch to "Edit in YAML" view (via 3-dot menu)
-# 4. Copy the YAML code below and paste it into the YAML window
+# 4. Copy YAML below and paste it into the YAML window
 # 5. Switch back to "Edit in visual editor" view
-# 6. Add Hue light entities
-# 7. Edit the brightness and/or color temperature to suit
+# 6. Open the trigger and add the Hue lights you want to control
+# 7. Open "Set turn-on behavior" and set the brightness and/or color temperature.
+#.   Don't touch the 'Targets' section.
 # 8. Click "Save"
 #
-# Technical details if you're interested:
+# Technical details if you're curious:
 #
 # One instance of the automation runs per light that turns off, and multiple
 # instances run in parallel. If you add >10 lights to this automation, increase
 # "max: 10" to match or exceed your light count.
 #
-# Hue bulbs take 400ms to turn off, hence the 1s wait to avoid a visible color
-# temperature transition during turn off. If none of your lights are CT, then you
-# can safely remove the delay.
+# Hue lights take 400ms to turn off, hence the 1s delay to keep color temperature
+# steady until the light is fully off. If you're updating brightness only and not
+# CT, then you can safely remove the delay.
 
 
 alias: Pre-stage Hue lights after turning off
