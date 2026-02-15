@@ -8,8 +8,8 @@ This integration extends the core Philips Hue integration and lets you:
 
 ## Key Benefits 🔅💡🔆
 
-* **Silky Smooth:** Dimming is continuous and precise, mirroring a high-quality physical dimmer. No more jittery repeat loops.
-* **Pre-Stage Lights:** Prepare your lights to turn on exactly how you want them.
+* **Silky Smooth:** Dimming is continuous and precise. No more jittery repeat loops and dimming overshoots.
+* **Predictable Turn_On:** Prepare your lights to turn on how you want them. No more unexpected flashes and blackouts when lights turn on.
 * **Zero Setup:** Connects to your lights automatically via the core Philips Hue integration.
 
 ---
@@ -30,11 +30,13 @@ This integration extends the core Philips Hue integration and lets you:
 
 [![Add Philips Hue Smooth Dimmer to your Home Assistant instance.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=hue_dimmer)
 
----
+***
 
 ## Usage
 
-Use these 4 actions in the Home Assistant automation editor:
+### Smooth Dimmer
+
+Use these 3 actions in the Home Assistant automation editor:
 
 <details>
 <summary><b>hue_dimmer.raise</b>: Start raising the brightness when you long-press an 'up' button. </summary>
@@ -67,21 +69,12 @@ Use these 4 actions in the Home Assistant automation editor:
 
 </details>
 
-<details>
-<summary><b>hue_dimmer.set_attributes</b>: Set brightness and/or color temperature without turning on.</summary>
-
-| Field | Description |
-| :--- | :--- |
-| `target` | Hue lights and groups |
-| `brightness` | Brightness level, 0.2–100% |
-| `color_temp_kelvin` | Color temperature in Kelvin (CT lights only) |
-
-</details>
-
 To dim multiple lights perfectly, target a **Hue Group** instead of separate lights. This enables your Hue Bridge to sync them via a single broadcast message at the start and end of each dimming transition.
 
+#### YAML Example
+
 <details>
-<summary>Here's a two-button dimmer example in YAML.</summary>
+<summary>Two-button dimmer</summary>
 
 ```yaml
 actions:
@@ -124,6 +117,50 @@ actions:
 </details>
 
 ---
+
+### Set Brightness / Color Temp While Light Is Off
+
+Example use cases:
+* Set lights to a helpful turn-on brightness after being dimmed to zero.
+* Avoid dazzle from lights that were turned off bright.
+* Pre-stage turn-on behavior across automations.
+
+<details>
+<summary><b>hue_dimmer.set_attributes</b>: Set brightness or color temperature without turning on.</summary>
+
+| Field | Description |
+| :--- | :--- |
+| `target` | Hue lights and groups |
+| `brightness` | Brightness level, 0.2–100% |
+| `color_temp_kelvin` | Color temperature in Kelvin (CT lights only) |
+
+</details>
+
+#### YAML Example
+
+<details>
+<summary>If a light turns off below 10% brightness, set to 50% for next turn-on</summary>
+
+```yaml
+triggers:
+  - trigger: light.turned_off
+    target:
+      entity_id: light.kitchen
+conditions:
+  # HA forgets brightness when light turns off, so use pre turn-off brightness.
+  # HA attributes use 0-255 scale, so 10% equates roughly to 25
+  - condition: template
+    value_template: "{{ trigger.from_state.attributes.get('brightness') | int(0) < 25 }}"
+actions:
+  - action: hue_dimmer.set_attributes
+    target:
+      entity_id: light.kitchen
+    data:
+      brightness: 50
+```
+</details>
+
+***
 
 ## Uninstall
 

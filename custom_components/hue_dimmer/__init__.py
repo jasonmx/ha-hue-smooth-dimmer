@@ -2,7 +2,7 @@ import logging
 import time
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant, ServiceCall
+from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.service import async_extract_entity_ids
 
@@ -15,6 +15,7 @@ from .const import (
     DIR_NONE,
     DIR_UP,
     DOMAIN,
+    SERVICE_GET_ATTRIBUTES,
     SERVICE_LOWER,
     SERVICE_RAISE,
     SERVICE_SET_ATTRIBUTES,
@@ -122,7 +123,7 @@ def resolve_brightness(hass: HomeAssistant, entity_id: str):
         predicted = max(cached["bright"] - change, cached["target"])
 
     _LOGGER.debug(
-        "CACHE [%s]: Guard active (Moving). Reported: %.1f%%, Predicted: %.1f%%",
+        "CACHE [%s]: Guard active (Moving). Ignoring reported: %.1f%%, Predicted: %.1f%%",
         entity_id,
         reported,
         predicted,
@@ -241,6 +242,18 @@ async def _resolve_group_light_ids(bridge, grouped_light_id):
     return light_ids
 
 
+async def _fetch_api_brightness(bridge, resource_type, resource_id):
+    # Fetch brightness directly from the Hue CLIP V2 API.
+    # Used as fallback when HA state is null (light off, cache expired).
+    try:
+        resp = await bridge.api.request("get", f"clip/v2/resource/{resource_type}/{resource_id}")
+        item = resp[0] if isinstance(resp, list) else resp
+        return float(item.get("dimming", {}).get("brightness", 0.0))
+    except Exception as exc:
+        _LOGGER.debug("Failed to fetch brightness from API for %s: %s", resource_id, exc)
+        return 0.0
+
+
 def _build_set_attributes_payload(hass, entity_id, brightness, color_temp_kelvin):
     payload = {}
 
@@ -282,11 +295,30 @@ async def _send_set_attributes(bridge, resource_type, resource_id, payload):
             _LOGGER.error("set_attributes failed for light %s: %s", light_id, exc)
 
 
+def _clamp_brightness(current, min_brightness, max_brightness):
+    clamped = current
+    if min_brightness is not None:
+        clamped = max(float(min_brightness), clamped)
+    if max_brightness is not None:
+        clamped = min(float(max_brightness), clamped)
+    return clamped if abs(clamped - current) > 0.1 else None
+
+
+def _positive_or_none(value):
+    return float(value) if value is not None and float(value) > 0 else None
+
+
 async def _handle_set_attributes(hass: HomeAssistant, call: ServiceCall):
     brightness = call.data.get("brightness")
-    color_temp_kelvin = call.data.get("color_temp_kelvin")
+    min_brightness = _positive_or_none(call.data.get("min_brightness"))
+    max_brightness = _positive_or_none(call.data.get("max_brightness"))
+    color_temp_kelvin = _positive_or_none(call.data.get("color_temp_kelvin"))
 
-    if brightness is None and color_temp_kelvin is None:
+    has_explicit = brightness is not None
+    has_clamp = min_brightness is not None or max_brightness is not None
+    has_ct = color_temp_kelvin is not None
+
+    if not has_explicit and not has_clamp and not has_ct:
         _LOGGER.warning("set_attributes called with no attributes to set.")
         return
 
@@ -298,9 +330,89 @@ async def _handle_set_attributes(hass: HomeAssistant, call: ServiceCall):
         if not bridge or not resource_id:
             continue
 
-        payload = _build_set_attributes_payload(hass, entity_id, brightness, color_temp_kelvin)
+        # Resolve brightness from min/max clamping (explicit brightness takes priority)
+        if not has_explicit and has_clamp:
+            current = resolve_brightness(hass, entity_id)
+            if current < 0.1:
+                current = await _fetch_api_brightness(bridge, resource_type, resource_id)
+            brightness = _clamp_brightness(current, min_brightness, max_brightness)
+
+        payload = _build_set_attributes_payload(hass, entity_id, brightness, color_temp_kelvin if has_ct else None)
         if payload:
             await _send_set_attributes(bridge, resource_type, resource_id, payload)
+
+
+async def _fetch_light_attributes(bridge, light_id):
+    # Fetch brightness and CT for a single light from the Hue API.
+    try:
+        resp = await bridge.api.request("get", f"clip/v2/resource/light/{light_id}")
+        item = resp[0] if isinstance(resp, list) else resp
+        brightness = float(item.get("dimming", {}).get("brightness", 0.0))
+        mirek = item.get("color_temperature", {}).get("mirek")
+        color_temp_kelvin = round(1_000_000 / mirek) if mirek else None
+        return brightness, color_temp_kelvin
+    except Exception as exc:
+        _LOGGER.debug("Failed to fetch attributes from API for %s: %s", light_id, exc)
+        return 0.0, None
+
+
+async def _fetch_group_attributes(bridge, grouped_light_id):
+    # Aggregate brightness and CT from individual lights in a group.
+    # Groups don't report CT, and report brightness as 0 when off.
+    light_ids = await _resolve_group_light_ids(bridge, grouped_light_id)
+    if not light_ids:
+        return 0.0, None
+
+    brightnesses = []
+    mireks = []
+    for light_id in light_ids:
+        try:
+            resp = await bridge.api.request("get", f"clip/v2/resource/light/{light_id}")
+            item = resp[0] if isinstance(resp, list) else resp
+            bright = item.get("dimming", {}).get("brightness")
+            if bright is not None:
+                brightnesses.append(float(bright))
+            mirek = item.get("color_temperature", {}).get("mirek")
+            if mirek:
+                mireks.append(mirek)
+        except Exception as exc:
+            _LOGGER.debug("Failed to fetch attributes for light %s: %s", light_id, exc)
+
+    avg_brightness = sum(brightnesses) / len(brightnesses) if brightnesses else 0.0
+    if mireks:
+        avg_mirek = round(sum(mireks) / len(mireks))
+        avg_ct_kelvin = round(1_000_000 / avg_mirek)
+    else:
+        avg_ct_kelvin = None
+    return avg_brightness, avg_ct_kelvin
+
+
+async def _handle_get_attributes(hass: HomeAssistant, call: ServiceCall) -> ServiceResponse:
+    result = {}
+    entity_ids = await async_extract_entity_ids(call)
+    for entity_id in entity_ids:
+        if not entity_id.startswith("light."):
+            continue
+        bridge, resource_type, resource_id = await get_bridge_and_id(hass, entity_id)
+        if not bridge or not resource_id:
+            continue
+
+        if resource_type == "grouped_light":
+            brightness, color_temp_kelvin = await _fetch_group_attributes(bridge, resource_id)
+        else:
+            # Brightness: cache/HA first, API fallback
+            brightness = resolve_brightness(hass, entity_id)
+            if brightness < 0.1:
+                brightness = await _fetch_api_brightness(bridge, resource_type, resource_id)
+            # CT: always from API (HA doesn't retain CT when off)
+            _, color_temp_kelvin = await _fetch_light_attributes(bridge, resource_id)
+
+        result[entity_id] = {
+            "brightness": round(brightness, 1),
+            "color_temp_kelvin": color_temp_kelvin,
+        }
+
+    return result
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
@@ -318,15 +430,21 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     async def handle_set_attributes(call: ServiceCall):
         await _handle_set_attributes(hass, call)
 
+    async def handle_get_attributes(call: ServiceCall) -> ServiceResponse:
+        return await _handle_get_attributes(hass, call)
+
     hass.services.async_register(DOMAIN, SERVICE_RAISE, handle_raise)
     hass.services.async_register(DOMAIN, SERVICE_LOWER, handle_lower)
     hass.services.async_register(DOMAIN, SERVICE_STOP, handle_stop)
     hass.services.async_register(DOMAIN, SERVICE_SET_ATTRIBUTES, handle_set_attributes)
+    hass.services.async_register(
+        DOMAIN, SERVICE_GET_ATTRIBUTES, handle_get_attributes, supports_response=SupportsResponse.ONLY
+    )
 
     return True
 
 
 async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry):
-    for svc in [SERVICE_RAISE, SERVICE_LOWER, SERVICE_STOP, SERVICE_SET_ATTRIBUTES]:
+    for svc in [SERVICE_RAISE, SERVICE_LOWER, SERVICE_STOP, SERVICE_SET_ATTRIBUTES, SERVICE_GET_ATTRIBUTES]:
         hass.services.async_remove(DOMAIN, svc)
     return True
