@@ -50,8 +50,8 @@ lower:
           mode: box
     limit:
       name: Minimum brightness limit
-      description: Light turns off at 0%. Choose 0.2%+ to keep standard Hue lights turned on, and 2%+ for Essential series.
-      example: 0.2
+      description: Light turns off at 0%. Choose 0.4%+ to keep standard Hue lights on, and 2%+ for Essential series.
+      example: 0.4
       required: false
       selector:
         number:
@@ -83,7 +83,7 @@ set_attributes:
       required: false
       selector:
         number:
-          min: 0.2
+          min: 0.4
           max: 100
           step: 0.2
           unit_of_measurement: "%"
@@ -94,7 +94,7 @@ set_attributes:
       required: false
       selector:
         number:
-          min: 0.2
+          min: 0.4
           max: 100
           step: 0.2
           unit_of_measurement: "%"
@@ -105,7 +105,7 @@ set_attributes:
       required: false
       selector:
         number:
-          min: 0.2
+          min: 0.4
           max: 100
           step: 0.2
           unit_of_measurement: "%"
