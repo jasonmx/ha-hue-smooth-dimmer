@@ -11,6 +11,9 @@ from .const import (
     DEFAULT_MAX_BRIGHTNESS,
     DEFAULT_MIN_BRIGHTNESS,
     DEFAULT_SWEEP_TIME,
+    DIR_DOWN,
+    DIR_NONE,
+    DIR_UP,
     DOMAIN,
     SERVICE_LOWER,
     SERVICE_RAISE,
@@ -20,9 +23,8 @@ from .const import (
 
 _LOGGER = logging.getLogger(__name__)
 
-# { (resource_type, resource_id):
-#   { "time": float, "bright": float, "target": float, "dir": str, "sweep": float } }
-BRIGHTNESS_CACHE = {}
+# { entity_id: { "time": float, "bright": float, "target": float, "dir": str, "sweep": float } }
+_brightness_cache = {}
 
 
 async def get_bridge_and_id(hass: HomeAssistant, entity_id: str):
@@ -73,7 +75,7 @@ def _get_ha_brightness(hass: HomeAssistant, entity_id: str):
     return (ha_bright / 255 * 100) if ha_bright is not None else 0.0
 
 
-def resolve_current_brightness(tracker_key, reported_brightness):
+def resolve_brightness(hass: HomeAssistant, entity_id: str):
     # During a dimming transition, the Hue API (and therefore HA's entity state) reports
     # brightness as though the transition happened instantaneously. If a transition stops
     # mid-flight, it takes ~10s to correct its reporting.
@@ -81,30 +83,31 @@ def resolve_current_brightness(tracker_key, reported_brightness):
     # The resolver decides whether to trust the reported brightness or predict its own, to
     # ensure dim-stop-dim sequences work smoothly. Expired cache entries are pruned inline.
 
-    cached = BRIGHTNESS_CACHE.get(tracker_key)
+    reported = _get_ha_brightness(hass, entity_id)
+    cached = _brightness_cache.get(entity_id)
     if not cached:
-        return reported_brightness
+        return reported
 
     now = time.time()
     elapsed = now - cached["time"]
 
     # Dynamic guard window: sweep duration + API settle buffer for active transitions,
     # just the settle buffer for stopped entries.
-    guard_seconds = cached["sweep"] + API_SETTLE_SECONDS if cached["dir"] != "none" else API_SETTLE_SECONDS
+    guard_seconds = cached["sweep"] + API_SETTLE_SECONDS if cached["dir"] != DIR_NONE else API_SETTLE_SECONDS
 
     # Guard expired — trust the reported brightness and prune the cache entry
     if elapsed > guard_seconds:
-        BRIGHTNESS_CACHE.pop(tracker_key, None)
-        return reported_brightness
+        _brightness_cache.pop(entity_id, None)
+        return reported
 
     # Guard active — predict brightness instead of trusting the report.
 
     # Stopped: return the cached brightness from when we stopped
-    if cached["dir"] == "none":
+    if cached["dir"] == DIR_NONE:
         _LOGGER.debug(
             "CACHE [%s]: Guard active (Stationary). Ignoring reported %.1f%%. Staying at %.1f%%",
-            tracker_key,
-            reported_brightness,
+            entity_id,
+            reported,
             cached["bright"],
         )
         return cached["bright"]
@@ -113,15 +116,15 @@ def resolve_current_brightness(tracker_key, reported_brightness):
     safe_sweep = max(cached["sweep"], 0.1)
     change = (100.0 / safe_sweep) * elapsed
 
-    if cached["dir"] == "up":
+    if cached["dir"] == DIR_UP:
         predicted = min(cached["bright"] + change, cached["target"])
     else:
         predicted = max(cached["bright"] - change, cached["target"])
 
     _LOGGER.debug(
         "CACHE [%s]: Guard active (Moving). Reported: %.1f%%, Predicted: %.1f%%",
-        tracker_key,
-        reported_brightness,
+        entity_id,
+        reported,
         predicted,
     )
 
@@ -129,18 +132,16 @@ def resolve_current_brightness(tracker_key, reported_brightness):
 
 
 async def start_transition(hass, bridge, resource_type, resource_id, entity_id, direction, sweep, limit):
-    tracker_key = (resource_type, resource_id)
-    reported_bright = _get_ha_brightness(hass, entity_id)
-    current_bright = resolve_current_brightness(tracker_key, reported_bright)
+    current_bright = resolve_brightness(hass, entity_id)
     distance = abs(limit - current_bright)
     dur_ms = int(distance * sweep * 10)  # 1000ms / 100% = 10ms/%
 
-    _LOGGER.debug("CALC [%s]: %.1f%% -> %.1f%% | Dur: %dms", resource_id, current_bright, limit, dur_ms)
+    _LOGGER.debug("CALC [%s]: %.1f%% -> %.1f%% | Dur: %dms", entity_id, current_bright, limit, dur_ms)
 
     if distance < 0.2:  # Min brightness step is 0.2%
         return
 
-    BRIGHTNESS_CACHE[tracker_key] = {
+    _brightness_cache[entity_id] = {
         "time": time.time(),
         "bright": current_bright,
         "target": limit,
@@ -149,9 +150,9 @@ async def start_transition(hass, bridge, resource_type, resource_id, entity_id, 
     }
 
     payload = {"dimming": {"brightness": limit}, "dynamics": {"duration": dur_ms}}
-    if direction == "up":
+    if direction == DIR_UP:
         payload["on"] = {"on": True}
-    elif direction == "down" and limit == 0.0:
+    elif direction == DIR_DOWN and limit == 0.0:
         payload["on"] = {"on": False}  # Turn off light after fading to 0% brightness
 
     try:
@@ -190,24 +191,16 @@ async def _handle_stop(hass: HomeAssistant, call: ServiceCall):
         except Exception as exc:
             _LOGGER.debug("Stop command ignored for %s: %s", resource_id, exc)
 
-        tracker_key = (resource_type, resource_id)
-        reported_bright = _get_ha_brightness(hass, entity_id)
-        final_bright = resolve_current_brightness(tracker_key, reported_bright)
-        old_state = BRIGHTNESS_CACHE.get(tracker_key, {})
-        BRIGHTNESS_CACHE[tracker_key] = {
+        current_bright = resolve_brightness(hass, entity_id)
+        _brightness_cache[entity_id] = {
             "time": time.time(),
-            "bright": final_bright,
-            "target": old_state.get("target", final_bright),
-            "dir": "none",
+            "bright": current_bright,
+            "target": current_bright,
+            "dir": DIR_NONE,
             "sweep": 1.0,
         }
 
-        _LOGGER.debug(
-            "STOP [%s]: Halted at %.1f%% (Guarding against snap to %.1f%%)",
-            resource_id,
-            final_bright,
-            BRIGHTNESS_CACHE[tracker_key]["target"],
-        )
+        _LOGGER.debug("STOP [%s]: Halted at %.1f%%", entity_id, current_bright)
 
 
 async def _resolve_group_light_ids(bridge, grouped_light_id):
@@ -314,10 +307,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
     # Register services for the Hue Smooth Dimmer.
 
     async def handle_raise(call: ServiceCall):
-        await _handle_transition(hass, call, "up", DEFAULT_MAX_BRIGHTNESS)
+        await _handle_transition(hass, call, DIR_UP, DEFAULT_MAX_BRIGHTNESS)
 
     async def handle_lower(call: ServiceCall):
-        await _handle_transition(hass, call, "down", DEFAULT_MIN_BRIGHTNESS)
+        await _handle_transition(hass, call, DIR_DOWN, DEFAULT_MIN_BRIGHTNESS)
 
     async def handle_stop(call: ServiceCall):
         await _handle_stop(hass, call)
