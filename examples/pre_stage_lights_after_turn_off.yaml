@@ -1,0 +1,53 @@
+# Pre-stage Hue lights after turning off
+#
+# Update Hue lights' turn-on brightness and/or color temperature when
+# they turn off. This saves you from fumbling in the dark if the last person
+# dimmed a light to zero, or being dazzled after lights were last used on high.
+#
+# BEGINNER-FRIENDLY SETUP INSTRUCTIONS:
+#
+# 1. Go to Settings -> Automations
+# 2. Click "Create automation" and choose "Create new automation" (top entry)
+# 3. Switch to "Edit in YAML" view (via 3-dot menu)
+# 4. Copy the YAML code below and paste it into the YAML window
+# 5. Switch back to "Edit in visual editor" view
+# 6. Add Hue light entities
+# 7. Edit the brightness and/or color temperature to suit
+# 8. Click "Save"
+#
+# Technical details if you're interested:
+#
+# One instance of the automation runs per light that turns off, and multiple
+# instances run in parallel. If you add >10 lights to this automation, increase
+# "max: 10" to match or exceed your light count.
+#
+# Hue bulbs take 400ms to turn off, hence the 1s wait to avoid a visible color
+# temperature transition during turn off. If none of your lights are CT, then you
+# can safely remove the delay.
+
+
+alias: Pre-stage Hue lights after turning off
+description: >
+  When lights turn off, set their brightness and color temperature for the next
+  turn-on.
+triggers:
+  - trigger: state
+    entity_id: []
+    from:
+      - "on"
+    to:
+      - "off"
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 1
+actions:
+  - action: hue_dimmer.set_attributes
+    target:
+      entity_id: "{{ trigger.entity_id }}"
+    data:
+      max_brightness: 80
+      min_brightness: 25
+      alias: Set turn-on behavior for the lights
+mode: parallel
+max: 10
