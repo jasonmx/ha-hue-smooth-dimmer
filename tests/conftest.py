@@ -6,7 +6,9 @@ import pytest
 @pytest.fixture
 def mock_bridge():
     bridge = MagicMock()
-    bridge.api.request = AsyncMock()
+    bridge.api.lights.set_state = AsyncMock()
+    bridge.api.groups.grouped_light.set_state = AsyncMock()
+    bridge.api.groups.grouped_light.get_lights.return_value = []
     return bridge
 
 

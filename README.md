@@ -1,15 +1,15 @@
 # Philips Hue Smooth Dimmer
 
-[![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/) ![Version](https://img.shields.io/github/v/release/jasonmx/philips-hue-smooth-dimmer)
+[![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/) ![Installs](https://img.shields.io/badge/dynamic/json?color=blue&label=Installs&query=hue_dimmer.total&url=https://analytics.home-assistant.io/custom_integrations.json) ![Latest Version](https://img.shields.io/github/v/release/jasonmx/philips-hue-smooth-dimmer)
 
 This integration extends the core Philips Hue integration and lets you:
 * Use third-party buttons to dim your Hue lights smoothly.
-* Set brightness and color temperature while lights are off.
+* Control brightness and color temp while Hue lights are turned off.
 
 ## Key Benefits 🔅💡🔆
 
-* **Silky Smooth:** Dimming is continuous and precise, mirroring a high-quality physical dimmer. No more jittery repeat loops.
-* **Pre-Stage Lights:** Prepare your lights to turn on exactly how you want them.
+* **Silky Smooth:** Dimming is continuous and precise. No more jittery repeat loops and dimming overshoots.
+* **Predictable:** Prepare your lights to turn on how you want them. Fewer dazzles and fumbles in the dark when lights turn on.
 * **Zero Setup:** Connects to your lights automatically via the core Philips Hue integration.
 
 ---
@@ -30,58 +30,33 @@ This integration extends the core Philips Hue integration and lets you:
 
 [![Add Philips Hue Smooth Dimmer to your Home Assistant instance.](https://my.home-assistant.io/badges/config_flow_start.svg)](https://my.home-assistant.io/redirect/config_flow_start/?domain=hue_dimmer)
 
----
+***
 
 ## Usage
 
-Use these 4 actions in the Home Assistant automation editor:
+### Smooth Dimming
 
-<details>
-<summary><b>hue_dimmer.raise</b>: Start raising the brightness when you long-press an 'up' button. </summary>
+Use these 3 actions in the Home Assistant automation editor:
 
-| Field | Description |
+| Action | Description |
 | :--- | :--- |
-| `target` | Hue lights & Hue groups |
-| `sweep_time` | Duration of 0-100% sweep (default 5s) |
-| `limit` | Maximum brightness limit (default 100%) |
+| `hue_dimmer.raise` | Start raising brightness |
+| `hue_dimmer.lower` | Start lowering brightness |
+| `hue_dimmer.stop` | Freeze brightness |
 
-</details>
-
-<details>
-<summary><b>hue_dimmer.lower</b>: Start lowering the brightness when you long-press a 'down' button.</summary>
-
-| Field | Description |
-| :--- | :--- |
-| `target` | Hue lights and groups |
-| `sweep_time` | Duration of 100-0% sweep (default 5s)  |
-| `limit` | Minimum brightness limit (default 0%). Light turns off at 0%. Choose 0.2%+ to keep standard Hue lights turned on, and 2%+ for Essential series. |
-
-</details>
-
-<details>
-<summary> <b>hue_dimmer.stop</b>: Freeze the brightness when you release a button. </summary>
-
-| Field | Description |
-| :--- | :--- |
-| `target` | Hue lights and groups |
-
-</details>
-
-<details>
-<summary><b>hue_dimmer.set_attributes</b>: Set brightness and/or color temperature without turning on.</summary>
-
-| Field | Description |
-| :--- | :--- |
-| `target` | Hue lights and groups |
-| `brightness` | Brightness level, 0.2–100% |
-| `color_temp_kelvin` | Color temperature in Kelvin (CT lights only) |
-
-</details>
+| Field | Actions | Description |
+| :--- | :--- | :--- |
+| `target` | all | Hue lights and groups |
+| `sweep_time` | raise, lower | Duration of a full 0–100% sweep (default 5s) |
+| `limit` | raise | Max brightness (default 100%) |
+| `limit` | lower | Min brightness (default 0%). Light turns off at 0%. Use 0.4%+ for standard Hue, 2%+ for Essential series. |
 
 To dim multiple lights perfectly, target a **Hue Group** instead of separate lights. This enables your Hue Bridge to sync them via a single broadcast message at the start and end of each dimming transition.
 
+#### YAML Example
+
 <details>
-<summary>Here's a two-button dimmer example in YAML.</summary>
+<summary>Two-button dimmer</summary>
 
 ```yaml
 actions:
@@ -97,7 +72,7 @@ actions:
               entity_id: light.living_room
             data:
               sweep_time: 4
-              limit: 0.2
+              limit: 0.4
 
       # Hold right button to raise brightness
       - conditions:
@@ -124,6 +99,74 @@ actions:
 </details>
 
 ---
+
+### Set Brightness / Color Temp While Light Is Off
+
+* Avoid dazzle from lights that were turned off bright.
+* Skip fumbling in the dark after lights were dimmed to zero.
+* Consistent turn-on behavior across your home.
+
+| Action | Description |
+| :--- | :--- |
+| `hue_dimmer.set_attributes` | Set brightness or color temperature without turning on |
+| `hue_dimmer.get_attributes` | Read brightness and color temperature while off or on |
+
+| Field | Description |
+| :--- | :--- |
+| `target` | Hue lights and groups |
+| `brightness` | Set exact brightness, 0.4–100% (set_attributes only) |
+| `min_brightness` | Clamp brightness to at least this level (set_attributes only) |
+| `max_brightness` | Clamp brightness to at most this level (set_attributes only) |
+| `color_temp_kelvin` | Color temperature in Kelvin, CT-capable lights only (set_attributes only) |
+
+`hue_dimmer.get_attributes` returns `brightness` (%) and `color_temp_kelvin` per entity.
+
+#### GUI Automation Example: Set turn-on brightness
+
+![Set turn-on behavior](examples/update-lights-after-turn-off--step-2.png)
+
+To set up this automation:
+
+1. Go to **Settings > Automations**
+2. Click **Create automation** and choose **Create new automation**
+3. Open the ⋮ menu and switch to **Edit in YAML** view
+4. Copy the YAML below and paste it into the YAML editor (replacing the existing YAML)
+5. Switch back to **Edit in visual editor** view
+6. Click the ["When something changes" entry](examples/update-lights-after-turn-off--step-1.png?raw=true) and select your Hue light(s).
+7. Click the "Set turn-on behavior" entry and edit the brightness/CT settings. Don't touch the Targets section.
+8. Click **Save**
+
+```yaml
+description: >
+  When lights turn off, set brightness and/or color temperature for next turn-on.
+triggers:
+  - trigger: state
+    entity_id: []
+    from:
+      - "on"
+    to:
+      - "off"
+    for:
+      hours: 0
+      minutes: 0
+      seconds: 1
+actions:
+  - action: hue_dimmer.set_attributes
+    target:
+      entity_id: "{{ trigger.entity_id }}"
+    data:
+      max_brightness: 80
+      min_brightness: 25
+      alias: Set turn-on behavior for the lights
+mode: parallel
+max: 10
+```
+
+If you add more than 10 lights, increase "max: 10" accordingly.
+
+</details>
+
+***
 
 ## Uninstall
 

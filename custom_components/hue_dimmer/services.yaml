@@ -9,7 +9,7 @@ raise:
     sweep_time:
       name: Sweep
       description: Duration of 0-100% sweep.
-      default: 5
+      example: 5
       required: false
       selector:
         number:
@@ -20,7 +20,7 @@ raise:
     limit:
       name: Maximum brightness limit
       description: Stop transition at limit.
-      default: 100
+      example: 100
       required: false
       selector:
         number:
@@ -40,7 +40,7 @@ lower:
     sweep_time:
       name: Sweep
       description: Duration of 100-0% sweep.
-      default: 5
+      example: 5
       required: false
       selector:
         number:
@@ -50,8 +50,8 @@ lower:
           mode: box
     limit:
       name: Minimum brightness limit
-      description: Light turns off at 0%. Choose 0.2%+ to keep standard Hue lights turned on, and 2%+ for Essential series.
-      default: 0.2
+      description: Light turns off at 0%. Choose 0.4%+ to keep standard Hue lights on, and 2%+ for Essential series.
+      example: 0.4
       required: false
       selector:
         number:
@@ -78,21 +78,53 @@ set_attributes:
   fields:
     brightness:
       name: Brightness
-      description: Brightness level (0.2-100%).
+      description: Brightness level.
+      example: 50
       required: false
       selector:
         number:
-          min: 0.2
+          min: 0.4
+          max: 100
+          step: 0.2
+          unit_of_measurement: "%"
+    min_brightness:
+      name: Minimum brightness
+      description: If current brightness is below this, raise it.
+      example: 20
+      required: false
+      selector:
+        number:
+          min: 0.4
+          max: 100
+          step: 0.2
+          unit_of_measurement: "%"
+    max_brightness:
+      name: Maximum brightness
+      description: If current brightness is above this, lower it.
+      example: 80
+      required: false
+      selector:
+        number:
+          min: 0.4
           max: 100
           step: 0.2
           unit_of_measurement: "%"
     color_temp_kelvin:
       name: Color temperature
-      description: Color temperature in Kelvin, for lights that support CT.
+      description: Color temperature in Kelvin.
+      example: 2800
       required: false
       selector:
         number:
-          min: 2000
+          min: 2200
           max: 6535
           step: 10
           unit_of_measurement: K
+
+get_attributes:
+  name: Get attributes
+  description: Get brightness and color temperature from Hue bridge, even when lights are off.
+  target:
+    entity:
+      domain: light
+      integration: hue
