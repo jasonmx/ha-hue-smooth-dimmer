@@ -28,7 +28,7 @@ _LOGGER = logging.getLogger(__name__)
 _brightness_cache = {}
 
 
-async def get_bridge_and_id(hass: HomeAssistant, entity_id: str):
+def resolve_entity(hass: HomeAssistant, entity_id: str):
     # Retrieves the Hue Bridge instance and Resource UUID, ensuring it supports V2 API.
     from homeassistant.components.hue.const import DOMAIN as HUE_DOMAIN
 
@@ -65,6 +65,12 @@ async def get_bridge_and_id(hass: HomeAssistant, entity_id: str):
     resource_type = "grouped_light" if is_group else "light"
 
     return bridge, resource_type, resource_id
+
+
+def _get_controller(bridge, resource_type):
+    if resource_type == "grouped_light":
+        return bridge.api.groups.grouped_light
+    return bridge.api.lights
 
 
 def _get_ha_brightness(hass: HomeAssistant, entity_id: str):
@@ -132,7 +138,7 @@ def resolve_brightness(hass: HomeAssistant, entity_id: str):
     return predicted
 
 
-async def start_transition(hass, bridge, resource_type, resource_id, entity_id, direction, sweep, limit):
+async def _start_transition(hass, bridge, resource_type, resource_id, entity_id, direction, sweep, limit):
     current_bright = resolve_brightness(hass, entity_id)
     distance = abs(limit - current_bright)
     dur_ms = int(distance * sweep * 10)  # 1000ms / 100% = 10ms/%
@@ -150,14 +156,11 @@ async def start_transition(hass, bridge, resource_type, resource_id, entity_id, 
         "sweep": sweep,
     }
 
-    payload = {"dimming": {"brightness": limit}, "dynamics": {"duration": dur_ms}}
-    if direction == DIR_UP:
-        payload["on"] = {"on": True}
-    elif direction == DIR_DOWN and limit == 0.0:
-        payload["on"] = {"on": False}  # Turn off light after fading to 0% brightness
+    controller = _get_controller(bridge, resource_type)
+    on = True if direction == DIR_UP else (False if direction == DIR_DOWN and limit == 0.0 else None)
 
     try:
-        await bridge.api.request("put", f"clip/v2/resource/{resource_type}/{resource_id}", json=payload)
+        await controller.set_state(resource_id, on=on, brightness=limit, transition_time=dur_ms)
     except Exception as exc:
         _LOGGER.debug("Transition command ignored for %s: %s", resource_id, exc)
 
@@ -171,9 +174,9 @@ async def _handle_transition(hass: HomeAssistant, call: ServiceCall, direction: 
     for entity_id in entity_ids:
         if not entity_id.startswith("light."):
             continue
-        bridge, resource_type, resource_id = await get_bridge_and_id(hass, entity_id)
+        bridge, resource_type, resource_id = resolve_entity(hass, entity_id)
         if bridge and resource_id:
-            await start_transition(hass, bridge, resource_type, resource_id, entity_id, direction, sweep, limit)
+            await _start_transition(hass, bridge, resource_type, resource_id, entity_id, direction, sweep, limit)
 
 
 async def _handle_stop(hass: HomeAssistant, call: ServiceCall):
@@ -181,16 +184,16 @@ async def _handle_stop(hass: HomeAssistant, call: ServiceCall):
     for entity_id in entity_ids:
         if not entity_id.startswith("light."):
             continue
-        bridge, resource_type, resource_id = await get_bridge_and_id(hass, entity_id)
+        bridge, resource_type, resource_id = resolve_entity(hass, entity_id)
         if not bridge or not resource_id:
             continue
 
+        controller = _get_controller(bridge, resource_type)
         try:
-            await bridge.api.request(
-                "put", f"clip/v2/resource/{resource_type}/{resource_id}", json={"dimming_delta": {"action": "stop"}}
-            )
+            await controller.set_dimming_delta(resource_id)
         except Exception as exc:
             _LOGGER.debug("Stop command ignored for %s: %s", resource_id, exc)
+            continue
 
         current_bright = resolve_brightness(hass, entity_id)
         _brightness_cache[entity_id] = {
@@ -204,84 +207,78 @@ async def _handle_stop(hass: HomeAssistant, call: ServiceCall):
         _LOGGER.debug("STOP [%s]: Halted at %.1f%%", entity_id, current_bright)
 
 
-async def _resolve_group_light_ids(bridge, grouped_light_id):
-    # Resolve a grouped_light to its member light resource IDs via Hue REST API.
-    # Chain: grouped_light → owner (room/zone) → children → collect light IDs
-    grouped_light = bridge.api.groups.grouped_light.get(grouped_light_id)
-    if not grouped_light or not grouped_light.owner:
-        return []
-
-    owner_rid = grouped_light.owner.rid
-    owner_rtype = grouped_light.owner.rtype.value  # "room" or "zone"
-
-    resp = await bridge.api.request("get", f"clip/v2/resource/{owner_rtype}/{owner_rid}")
-    if not resp:
-        return []
-
-    # aiohue returns the data array directly (not wrapped in {"data": [...]})
-    item = resp[0] if isinstance(resp, list) else resp
-    children = item.get("children", [])
-    light_ids = []
-    device_ids = []
-
-    for child in children:
-        if child["rtype"] == "light":
-            light_ids.append(child["rid"])
-        elif child["rtype"] == "device":
-            device_ids.append(child["rid"])
-
-    # For device children, find their light services
-    for device_id in device_ids:
-        dev_resp = await bridge.api.request("get", f"clip/v2/resource/device/{device_id}")
-        if dev_resp:
-            dev_item = dev_resp[0] if isinstance(dev_resp, list) else dev_resp
-            for svc in dev_item.get("services", []):
-                if svc["rtype"] == "light":
-                    light_ids.append(svc["rid"])
-
-    return light_ids
+def _resolve_group_light_ids(bridge, grouped_light_id):
+    # Resolve a grouped_light to its member light resource IDs via aiohue cache.
+    return [light.id for light in bridge.api.groups.grouped_light.get_lights(grouped_light_id)]
 
 
-async def _fetch_api_brightness(bridge, resource_type, resource_id):
-    # Fetch brightness directly from the Hue CLIP V2 API.
+def _get_cached_brightness(bridge, resource_type, resource_id):
+    # Read brightness from aiohue's cached model (sync, no API call).
     # Used as fallback when HA state is null (light off, cache expired).
-    try:
-        resp = await bridge.api.request("get", f"clip/v2/resource/{resource_type}/{resource_id}")
-        item = resp[0] if isinstance(resp, list) else resp
-        return float(item.get("dimming", {}).get("brightness", 0.0))
-    except Exception as exc:
-        _LOGGER.debug("Failed to fetch brightness from API for %s: %s", resource_id, exc)
-        return 0.0
+    controller = _get_controller(bridge, resource_type)
+    model = controller.get(resource_id)
+    if model and model.dimming:
+        return model.dimming.brightness
+    return 0.0
 
 
-def _build_set_attributes_payload(hass, entity_id, brightness, color_temp_kelvin):
-    payload = {}
-
-    if brightness is not None:
-        payload["dimming"] = {"brightness": float(brightness)}
-
-    if color_temp_kelvin is not None:
-        state = hass.states.get(entity_id)
-        supported_modes = state.attributes.get("supported_color_modes", []) if state else []
-
-        if "color_temp" not in supported_modes:
-            _LOGGER.warning(
-                "Entity %s does not support color temperature. Skipping CT, sending other attributes.",
-                entity_id,
-            )
-        else:
-            min_k = state.attributes.get("min_color_temp_kelvin", 2000)
-            max_k = state.attributes.get("max_color_temp_kelvin", 6535)
-            clamped_k = max(min_k, min(max_k, color_temp_kelvin))
-            payload["color_temperature"] = {"mirek": round(1_000_000 / clamped_k)}
-
-    return payload
+def _get_cached_light_attributes(bridge, light_id):
+    # Read brightness and CT from aiohue's cached light model (sync).
+    model = bridge.api.lights.get(light_id)
+    if not model:
+        return 0.0, None
+    brightness = model.dimming.brightness if model.dimming else 0.0
+    mirek = model.color_temperature.mirek if model.color_temperature else None
+    color_temp_kelvin = round(1_000_000 / mirek) if mirek else None
+    return brightness, color_temp_kelvin
 
 
-async def _send_set_attributes(bridge, resource_type, resource_id, payload):
+def _get_cached_group_attributes(bridge, grouped_light_id):
+    # Aggregate brightness and CT from individual lights in a group (sync).
+    # Groups don't report CT, and report brightness as 0 when off.
+    lights = bridge.api.groups.grouped_light.get_lights(grouped_light_id)
+    if not lights:
+        return 0.0, None
+
+    brightnesses = []
+    mireks = []
+    for light in lights:
+        if light.dimming:
+            brightnesses.append(light.dimming.brightness)
+        if light.color_temperature and light.color_temperature.mirek:
+            mireks.append(light.color_temperature.mirek)
+
+    avg_brightness = sum(brightnesses) / len(brightnesses) if brightnesses else 0.0
+    if mireks:
+        avg_mirek = round(sum(mireks) / len(mireks))
+        avg_ct_kelvin = round(1_000_000 / avg_mirek)
+    else:
+        avg_ct_kelvin = None
+    return avg_brightness, avg_ct_kelvin
+
+
+def _resolve_color_temp(hass, entity_id, color_temp_kelvin):
+    # Validate CT support, clamp to entity range, and convert to mirek.
+    state = hass.states.get(entity_id)
+    supported_modes = state.attributes.get("supported_color_modes", []) if state else []
+
+    if "color_temp" not in supported_modes:
+        _LOGGER.warning(
+            "Entity %s does not support color temperature. Skipping CT.",
+            entity_id,
+        )
+        return None
+
+    min_k = state.attributes.get("min_color_temp_kelvin", 2000)
+    max_k = state.attributes.get("max_color_temp_kelvin", 6535)
+    clamped_k = max(min_k, min(max_k, color_temp_kelvin))
+    return round(1_000_000 / clamped_k)
+
+
+async def _send_set_attributes(bridge, resource_type, resource_id, brightness, color_temp_mirek):
     # For groups, send to each individual light so attributes apply even when off.
     if resource_type == "grouped_light":
-        light_ids = await _resolve_group_light_ids(bridge, resource_id)
+        light_ids = _resolve_group_light_ids(bridge, resource_id)
         if not light_ids:
             _LOGGER.warning("No lights found in group %s", resource_id)
             return
@@ -290,7 +287,11 @@ async def _send_set_attributes(bridge, resource_type, resource_id, payload):
 
     for light_id in light_ids:
         try:
-            await bridge.api.request("put", f"clip/v2/resource/light/{light_id}", json=payload)
+            await bridge.api.lights.set_state(
+                light_id,
+                brightness=float(brightness) if brightness is not None else None,
+                color_temp=color_temp_mirek,
+            )
         except Exception as exc:
             _LOGGER.error("set_attributes failed for light %s: %s", light_id, exc)
 
@@ -305,7 +306,10 @@ def _clamp_brightness(current, min_brightness, max_brightness):
 
 
 def _positive_or_none(value):
-    return float(value) if value is not None and float(value) > 0 else None
+    if value is None:
+        return None
+    f = float(value)
+    return f if f > 0 else None
 
 
 async def _handle_set_attributes(hass: HomeAssistant, call: ServiceCall):
@@ -326,65 +330,21 @@ async def _handle_set_attributes(hass: HomeAssistant, call: ServiceCall):
     for entity_id in entity_ids:
         if not entity_id.startswith("light."):
             continue
-        bridge, resource_type, resource_id = await get_bridge_and_id(hass, entity_id)
+        bridge, resource_type, resource_id = resolve_entity(hass, entity_id)
         if not bridge or not resource_id:
             continue
 
-        # Resolve brightness from min/max clamping (explicit brightness takes priority)
+        # Resolve brightness per-entity (explicit value, or clamped from current)
+        entity_brightness = brightness
         if not has_explicit and has_clamp:
             current = resolve_brightness(hass, entity_id)
             if current < 0.1:
-                current = await _fetch_api_brightness(bridge, resource_type, resource_id)
-            brightness = _clamp_brightness(current, min_brightness, max_brightness)
+                current = _get_cached_brightness(bridge, resource_type, resource_id)
+            entity_brightness = _clamp_brightness(current, min_brightness, max_brightness)
 
-        payload = _build_set_attributes_payload(hass, entity_id, brightness, color_temp_kelvin if has_ct else None)
-        if payload:
-            await _send_set_attributes(bridge, resource_type, resource_id, payload)
-
-
-async def _fetch_light_attributes(bridge, light_id):
-    # Fetch brightness and CT for a single light from the Hue API.
-    try:
-        resp = await bridge.api.request("get", f"clip/v2/resource/light/{light_id}")
-        item = resp[0] if isinstance(resp, list) else resp
-        brightness = float(item.get("dimming", {}).get("brightness", 0.0))
-        mirek = item.get("color_temperature", {}).get("mirek")
-        color_temp_kelvin = round(1_000_000 / mirek) if mirek else None
-        return brightness, color_temp_kelvin
-    except Exception as exc:
-        _LOGGER.debug("Failed to fetch attributes from API for %s: %s", light_id, exc)
-        return 0.0, None
-
-
-async def _fetch_group_attributes(bridge, grouped_light_id):
-    # Aggregate brightness and CT from individual lights in a group.
-    # Groups don't report CT, and report brightness as 0 when off.
-    light_ids = await _resolve_group_light_ids(bridge, grouped_light_id)
-    if not light_ids:
-        return 0.0, None
-
-    brightnesses = []
-    mireks = []
-    for light_id in light_ids:
-        try:
-            resp = await bridge.api.request("get", f"clip/v2/resource/light/{light_id}")
-            item = resp[0] if isinstance(resp, list) else resp
-            bright = item.get("dimming", {}).get("brightness")
-            if bright is not None:
-                brightnesses.append(float(bright))
-            mirek = item.get("color_temperature", {}).get("mirek")
-            if mirek:
-                mireks.append(mirek)
-        except Exception as exc:
-            _LOGGER.debug("Failed to fetch attributes for light %s: %s", light_id, exc)
-
-    avg_brightness = sum(brightnesses) / len(brightnesses) if brightnesses else 0.0
-    if mireks:
-        avg_mirek = round(sum(mireks) / len(mireks))
-        avg_ct_kelvin = round(1_000_000 / avg_mirek)
-    else:
-        avg_ct_kelvin = None
-    return avg_brightness, avg_ct_kelvin
+        color_temp_mirek = _resolve_color_temp(hass, entity_id, color_temp_kelvin) if has_ct else None
+        if entity_brightness is not None or color_temp_mirek is not None:
+            await _send_set_attributes(bridge, resource_type, resource_id, entity_brightness, color_temp_mirek)
 
 
 async def _handle_get_attributes(hass: HomeAssistant, call: ServiceCall) -> ServiceResponse:
@@ -393,19 +353,19 @@ async def _handle_get_attributes(hass: HomeAssistant, call: ServiceCall) -> Serv
     for entity_id in entity_ids:
         if not entity_id.startswith("light."):
             continue
-        bridge, resource_type, resource_id = await get_bridge_and_id(hass, entity_id)
+        bridge, resource_type, resource_id = resolve_entity(hass, entity_id)
         if not bridge or not resource_id:
             continue
 
         if resource_type == "grouped_light":
-            brightness, color_temp_kelvin = await _fetch_group_attributes(bridge, resource_id)
+            brightness, color_temp_kelvin = _get_cached_group_attributes(bridge, resource_id)
         else:
-            # Brightness: cache/HA first, API fallback
+            # Brightness: cache/HA first, aiohue cache fallback
             brightness = resolve_brightness(hass, entity_id)
             if brightness < 0.1:
-                brightness = await _fetch_api_brightness(bridge, resource_type, resource_id)
-            # CT: always from API (HA doesn't retain CT when off)
-            _, color_temp_kelvin = await _fetch_light_attributes(bridge, resource_id)
+                brightness = _get_cached_brightness(bridge, resource_type, resource_id)
+            # CT: always from aiohue cache (HA doesn't retain CT when off)
+            _, color_temp_kelvin = _get_cached_light_attributes(bridge, resource_id)
 
         result[entity_id] = {
             "brightness": round(brightness, 1),
