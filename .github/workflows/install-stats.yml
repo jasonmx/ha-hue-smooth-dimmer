@@ -24,6 +24,7 @@ jobs:
 
       - name: Run script
         run: python scripts/update_install_stats.py
+          python-version: '3.11'
 
       - name: Commit changes
         run: |
