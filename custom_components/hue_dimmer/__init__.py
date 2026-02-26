@@ -339,7 +339,10 @@ async def _handle_set_attributes(hass: HomeAssistant, call: ServiceCall):
         if not has_explicit and has_clamp:
             current = resolve_brightness(hass, entity_id)
             if current < 0.1:
-                current = _get_cached_brightness(bridge, resource_type, resource_id)
+                if resource_type == "grouped_light":
+                    current, _ = _get_cached_group_attributes(bridge, resource_id)
+                else:
+                    current = _get_cached_brightness(bridge, resource_type, resource_id)
             entity_brightness = _clamp_brightness(current, min_brightness, max_brightness)
 
         color_temp_mirek = _resolve_color_temp(hass, entity_id, color_temp_kelvin) if has_ct else None

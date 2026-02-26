@@ -11,9 +11,9 @@
 # 3. Open the ⋮ menu and switch to "Edit in YAML" view
 # 4. Copy the YAML below and paste it into the YAML editor (replacing the existing YAML)
 # 5. Switch back to "Edit in visual editor" view
-# 6. Click the "When something changes" entry and select your Hue light(s).
+# 6. Click "When something changes" entry and select your Hue light(s).
 #    Tip: search for "light" to filter the entities.
-# 7. Click the "Set turn-on behavior" entry and edit the brightness/CT settings.
+# 7. Click "Set turn-on behavior" entry and edit the brightness/CT settings.
 #    Don't touch the Targets section.
 # 8. Click "Save"
 #

@@ -1,6 +1,6 @@
 # Philips Hue Smooth Dimmer
 
-[![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/) ![Installs](https://img.shields.io/badge/dynamic/json?color=blue&label=Installs&query=hue_dimmer.total&url=https://analytics.home-assistant.io/custom_integrations.json) ![Latest Version](https://img.shields.io/github/v/release/jasonmx/philips-hue-smooth-dimmer)
+[![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/) ![Latest Version](https://img.shields.io/github/v/release/jasonmx/philips-hue-smooth-dimmer)
 
 This integration extends the core Philips Hue integration and lets you:
 * Use third-party buttons to dim your Hue lights smoothly.
@@ -49,62 +49,29 @@ Use these 3 actions in the Home Assistant automation editor:
 | `target` | all | Hue lights and groups |
 | `sweep_time` | raise, lower | Duration of a full 0–100% sweep (default 5s) |
 | `limit` | raise | Max brightness (default 100%) |
-| `limit` | lower | Min brightness (default 0%). Light turns off at 0%. Use 0.4%+ for standard Hue, 2%+ for Essential series. |
+| `limit` | lower | Light turns off at 0% default. Choose 0.4%+ to keep standard Hue lights on, and 2%+ for Essential series |
 
-To dim multiple lights perfectly, target a **Hue Group** instead of separate lights. This enables your Hue Bridge to sync them via a single broadcast message at the start and end of each dimming transition.
+To dim multiple lights perfectly, target a **Hue Group** instead of separate lights. Your Hue Bridge will then sync them with group-wide Zigbee messages.
 
-#### YAML Example
-
-<details>
-<summary>Two-button dimmer</summary>
+#### YAML Example: Two-button dimmer
 
 ```yaml
-actions:
-  - choose:
+left_button_held:
+  - action: hue_dimmer.lower
 
-      # Hold left button to lower brightness
-      - conditions:
-          - condition: trigger
-            id: long_press_left
-        sequence:
-          - action: hue_dimmer.lower
-            target:
-              entity_id: light.living_room
-            data:
-              sweep_time: 4
-              limit: 0.4
+right_button_held:
+  - action: hue_dimmer.raise
 
-      # Hold right button to raise brightness
-      - conditions:
-          - condition: trigger
-            id: long_press_right
-        sequence:
-          - action: hue_dimmer.raise
-            target:
-              entity_id: light.living_room
-            data:
-              sweep_time: 4
-
-      # Release button to stop
-      - conditions:
-          - condition: trigger
-            id:
-              - release_left
-              - release_right
-        sequence:
-          - action: hue_dimmer.stop
-            target:
-              entity_id: light.living_room
+buttons_released:
+  - action: hue_dimmer.stop
 ```
-</details>
 
 ---
 
 ### Set Brightness / Color Temp While Light Is Off
 
-* Avoid dazzle from lights that were turned off bright.
-* Skip fumbling in the dark after lights were dimmed to zero.
-* Consistent turn-on behavior across your home.
+* Reduce surprises from lights that were turned off very bright or dimmed to zero
+* Achieve consistent turn-on behavior across lights and automations
 
 | Action | Description |
 | :--- | :--- |
@@ -147,8 +114,6 @@ triggers:
     to:
       - "off"
     for:
-      hours: 0
-      minutes: 0
       seconds: 1
 actions:
   - action: hue_dimmer.set_attributes
