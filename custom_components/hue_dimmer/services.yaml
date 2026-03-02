@@ -117,12 +117,12 @@ set_attributes:
       filter:
         attribute:
           supported_color_modes:
-            - color_temp
-            - hs
-            - xy
-            - rgb
-            - rgbw
-            - rgbww
+            - light.ColorMode.COLOR_TEMP
+            - light.ColorMode.HS
+            - light.ColorMode.XY
+            - light.ColorMode.RGB
+            - light.ColorMode.RGBW
+            - light.ColorMode.RGBWW
       selector:
         number:
           min: 2200
@@ -137,11 +137,11 @@ set_attributes:
       filter:
         attribute:
           supported_color_modes:
-            - hs
-            - xy
-            - rgb
-            - rgbw
-            - rgbww
+            - light.ColorMode.HS
+            - light.ColorMode.XY
+            - light.ColorMode.RGB
+            - light.ColorMode.RGBW
+            - light.ColorMode.RGBWW
       selector:
         object:
     hs_color:
@@ -152,11 +152,11 @@ set_attributes:
       filter:
         attribute:
           supported_color_modes:
-            - hs
-            - xy
-            - rgb
-            - rgbw
-            - rgbww
+            - light.ColorMode.HS
+            - light.ColorMode.XY
+            - light.ColorMode.RGB
+            - light.ColorMode.RGBW
+            - light.ColorMode.RGBWW
       selector:
         object:
     rgb_color:
@@ -167,11 +167,11 @@ set_attributes:
       filter:
         attribute:
           supported_color_modes:
-            - hs
-            - xy
-            - rgb
-            - rgbw
-            - rgbww
+            - light.ColorMode.HS
+            - light.ColorMode.XY
+            - light.ColorMode.RGB
+            - light.ColorMode.RGBW
+            - light.ColorMode.RGBWW
       selector:
         color_rgb:
 
