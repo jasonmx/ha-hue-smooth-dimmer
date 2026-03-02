@@ -118,32 +118,23 @@ set_attributes:
         attribute:
           supported_color_modes:
             - light.ColorMode.COLOR_TEMP
-            - light.ColorMode.HS
-            - light.ColorMode.XY
-            - light.ColorMode.RGB
-            - light.ColorMode.RGBW
-            - light.ColorMode.RGBWW
       selector:
         number:
           min: 2200
           max: 6535
           step: 10
           unit_of_measurement: K
-    xy_color:
-      name: XY color
-      description: "CIE XY color as [x, y]"
-      example: "[0.52, 0.43]"
+    rgb_color:
+      name: RGB color
+      description: "Color as [red, green, blue] (0–255 each)"
+      example: "[255, 100, 100]"
       required: false
       filter:
         attribute:
           supported_color_modes:
-            - light.ColorMode.HS
-            - light.ColorMode.XY
             - light.ColorMode.RGB
-            - light.ColorMode.RGBW
-            - light.ColorMode.RGBWW
       selector:
-        object:
+        color_rgb:
     hs_color:
       name: Hue/Sat color
       description: "Color as [hue, saturation] (0–360, 0–100)"
@@ -153,31 +144,23 @@ set_attributes:
         attribute:
           supported_color_modes:
             - light.ColorMode.HS
-            - light.ColorMode.XY
-            - light.ColorMode.RGB
-            - light.ColorMode.RGBW
-            - light.ColorMode.RGBWW
       selector:
         object:
-    rgb_color:
-      name: RGB color
-      description: "Color as [r, g, b] (0–255 each)"
-      example: "[255, 100, 100]"
+    xy_color:
+      name: XY color
+      description: "Color as [x, y]"
+      example: "[0.52, 0.43]"
       required: false
       filter:
         attribute:
           supported_color_modes:
-            - light.ColorMode.HS
             - light.ColorMode.XY
-            - light.ColorMode.RGB
-            - light.ColorMode.RGBW
-            - light.ColorMode.RGBWW
       selector:
-        color_rgb:
+        object:
 
 get_attributes:
   name: Get attributes
-  description: Get brightness, color temp, and color (XY, HS, RGB), even when lights are off.
+  description: Get brightness, color temp, and color (RGB, HS, XY), even when lights are off.
   target:
     entity:
       domain: light

@@ -260,13 +260,13 @@ def _get_cached_group_attributes(bridge, grouped_light_id):
 
 def _resolve_color_xy(hass, entity_id, xy_color, hs_color, rgb_color):
     # Convert whichever color format was provided to an XY tuple.
-    # Priority: xy_color > hs_color > rgb_color. Warns if more than one is set.
-    provided = [f for f in [xy_color, hs_color, rgb_color] if f is not None]
+    # Priority: rgb_color > hs_color > xy_color. Warns if more than one is set.
+    provided = [f for f in [rgb_color, hs_color, xy_color] if f is not None]
     if not provided:
         return None
     if len(provided) > 1:
         _LOGGER.warning(
-            "set_attributes: multiple color fields set for %s; using xy_color > hs_color > rgb_color priority.",
+            "set_attributes: multiple color fields set for %s; using rgb_color > hs_color > xy_color priority.",
             entity_id,
         )
 
@@ -276,11 +276,11 @@ def _resolve_color_xy(hass, entity_id, xy_color, hs_color, rgb_color):
         _LOGGER.warning("Entity %s does not support XY color. Skipping color.", entity_id)
         return None
 
-    if xy_color is not None:
-        return (float(xy_color[0]), float(xy_color[1]))
+    if rgb_color is not None:
+        return color_RGB_to_xy(int(rgb_color[0]), int(rgb_color[1]), int(rgb_color[2]))
     if hs_color is not None:
         return color_hs_to_xy(float(hs_color[0]), float(hs_color[1]))
-    return color_RGB_to_xy(int(rgb_color[0]), int(rgb_color[1]), int(rgb_color[2]))
+    return (float(xy_color[0]), float(xy_color[1]))
 
 
 def _resolve_color_temp(hass, entity_id, color_temp_kelvin):
@@ -413,9 +413,9 @@ async def _handle_get_attributes(hass: HomeAssistant, call: ServiceCall) -> Serv
         result[entity_id] = {
             "brightness": round(brightness, 1),
             "color_temp_kelvin": color_temp_kelvin,
-            "color_xy": list(color_xy) if color_xy else None,
-            "hs_color": list(hs) if hs else None,
             "rgb_color": list(rgb) if rgb else None,
+            "hs_color": list(hs) if hs else None,
+            "color_xy": list(color_xy) if color_xy else None,
         }
 
     return result

@@ -328,11 +328,13 @@ async def test_color_on_non_color_light_with_brightness(mock_hass, mock_bridge):
 
 
 @pytest.mark.asyncio
-async def test_color_priority_xy_wins_over_hs(mock_hass, mock_bridge):
+async def test_color_priority_rgb_wins_over_hs_and_xy(mock_hass, mock_bridge):
+    expected_xy = color_RGB_to_xy(255, 128, 0)
     call = make_service_call({
         "entity_id": [ENTITY_ID],
-        "xy_color": [0.3, 0.3],
+        "rgb_color": [255, 128, 0],
         "hs_color": [30, 80],
+        "xy_color": [0.3, 0.3],
     })
     mock_hass.states.get.return_value = make_entity_state(supported_color_modes=["xy"])
 
@@ -343,7 +345,7 @@ async def test_color_priority_xy_wins_over_hs(mock_hass, mock_bridge):
         RESOURCE_ID,
         brightness=None,
         color_temp=None,
-        color_xy=(0.3, 0.3),
+        color_xy=expected_xy,
     )
 
 

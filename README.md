@@ -73,7 +73,7 @@ buttons_released:
 | Action | Description |
 | :--- | :--- |
 | `hue_dimmer.set_attributes` | Set brightness, color temp, or color without turning on |
-| `hue_dimmer.get_attributes` | Get brightness, color temp, or color, even while a light is off |
+| `hue_dimmer.get_attributes` | Get brightness, color temp, and color (RGB, HS, XY), even while lights are off. Returns one record per target |
 
 | Field | Description |
 | :--- | :--- |
@@ -82,9 +82,10 @@ buttons_released:
 | `min_brightness` | Enforce a minimum brightness (%) |
 | `max_brightness` | Enforce a maximum brightness (%) |
 | `color_temp_kelvin` | Color temperature (K) |
-| `xy_color` | CIE XY color as `[x, y]` |
+| `rgb_color` | Color as `[red, green, blue]` (0–255 each) |
 | `hs_color` | Color as `[hue, saturation]` (0–360, 0–100) |
-| `rgb_color` | Color as `[r, g, b]` (0–255 each) |
+| `xy_color` | Color as `[x, y]` |
+
 
 #### GUI Automation Example: When lights turn off for an hour, set brightness for next turn-on
 
