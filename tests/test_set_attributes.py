@@ -1,6 +1,7 @@
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from homeassistant.util.color import color_hs_to_xy, color_RGB_to_xy
 
 from custom_components.hue_dimmer import _handle_set_attributes
 from tests.conftest import make_entity_state, make_service_call
@@ -41,6 +42,10 @@ def patch_bridge(bridge, resource_type="light"):
     )
 
 
+# ---------------------------------------------------------------------------
+# Existing tests — updated to include color_xy=None
+# ---------------------------------------------------------------------------
+
 @pytest.mark.asyncio
 async def test_brightness_only(mock_hass, mock_bridge):
     call = make_service_call({"entity_id": [ENTITY_ID], "brightness": 42.5})
@@ -52,6 +57,7 @@ async def test_brightness_only(mock_hass, mock_bridge):
         RESOURCE_ID,
         brightness=42.5,
         color_temp=None,
+        color_xy=None,
     )
 
 
@@ -71,6 +77,7 @@ async def test_ct_only_on_ct_light(mock_hass, mock_bridge):
         RESOURCE_ID,
         brightness=None,
         color_temp=333,
+        color_xy=None,
     )
 
 
@@ -94,6 +101,7 @@ async def test_brightness_and_ct(mock_hass, mock_bridge):
         RESOURCE_ID,
         brightness=75.0,
         color_temp=250,
+        color_xy=None,
     )
 
 
@@ -116,6 +124,7 @@ async def test_ct_on_non_ct_light_with_brightness(mock_hass, mock_bridge):
         RESOURCE_ID,
         brightness=50.0,
         color_temp=None,
+        color_xy=None,
     )
 
 
@@ -160,6 +169,7 @@ async def test_ct_clamped_to_min(mock_hass, mock_bridge):
         RESOURCE_ID,
         brightness=None,
         color_temp=454,
+        color_xy=None,
     )
 
 
@@ -180,6 +190,7 @@ async def test_ct_clamped_to_max(mock_hass, mock_bridge):
         RESOURCE_ID,
         brightness=None,
         color_temp=153,
+        color_xy=None,
     )
 
 
@@ -199,7 +210,6 @@ async def test_api_error_handled(mock_hass, mock_bridge):
 async def test_group_resolves_to_individual_lights(mock_hass, mock_bridge):
     call = make_service_call({"entity_id": [ENTITY_ID], "brightness": 80})
 
-    # Mock get_lights to return Light-like objects with .id attributes
     light1 = MagicMock()
     light1.id = "light-1"
     light2 = MagicMock()
@@ -209,7 +219,6 @@ async def test_group_resolves_to_individual_lights(mock_hass, mock_bridge):
     with patch_bridge(mock_bridge, resource_type="grouped_light"):
         await _handle_set_attributes(mock_hass, call)
 
-    # 2 set_state calls for individual lights
     assert mock_bridge.api.lights.set_state.call_count == 2
     calls = mock_bridge.api.lights.set_state.call_args_list
     called_ids = {c.args[0] for c in calls}
@@ -217,6 +226,7 @@ async def test_group_resolves_to_individual_lights(mock_hass, mock_bridge):
     for c in calls:
         assert c.kwargs["brightness"] == 80.0
         assert c.kwargs["color_temp"] is None
+        assert c.kwargs["color_xy"] is None
 
 
 @pytest.mark.asyncio
@@ -228,3 +238,156 @@ async def test_group_no_lights_found(mock_hass, mock_bridge):
         await _handle_set_attributes(mock_hass, call)
 
     mock_bridge.api.lights.set_state.assert_not_called()
+
+
+# ---------------------------------------------------------------------------
+# New tests — color input (xy_color, hs_color, rgb_color)
+# ---------------------------------------------------------------------------
+
+@pytest.mark.asyncio
+async def test_xy_color_on_color_light(mock_hass, mock_bridge):
+    call = make_service_call({"entity_id": [ENTITY_ID], "xy_color": [0.369, 0.445]})
+    mock_hass.states.get.return_value = make_entity_state(supported_color_modes=["xy"])
+
+    with patch_bridge(mock_bridge):
+        await _handle_set_attributes(mock_hass, call)
+
+    mock_bridge.api.lights.set_state.assert_called_once_with(
+        RESOURCE_ID,
+        brightness=None,
+        color_temp=None,
+        color_xy=(0.369, 0.445),
+    )
+
+
+@pytest.mark.asyncio
+async def test_hs_color_on_color_light(mock_hass, mock_bridge):
+    call = make_service_call({"entity_id": [ENTITY_ID], "hs_color": [30, 80]})
+    mock_hass.states.get.return_value = make_entity_state(supported_color_modes=["xy"])
+
+    with patch_bridge(mock_bridge):
+        await _handle_set_attributes(mock_hass, call)
+
+    expected_xy = color_hs_to_xy(30.0, 80.0)
+    mock_bridge.api.lights.set_state.assert_called_once_with(
+        RESOURCE_ID,
+        brightness=None,
+        color_temp=None,
+        color_xy=expected_xy,
+    )
+
+
+@pytest.mark.asyncio
+async def test_rgb_color_on_color_light(mock_hass, mock_bridge):
+    call = make_service_call({"entity_id": [ENTITY_ID], "rgb_color": [255, 128, 0]})
+    mock_hass.states.get.return_value = make_entity_state(supported_color_modes=["xy"])
+
+    with patch_bridge(mock_bridge):
+        await _handle_set_attributes(mock_hass, call)
+
+    expected_xy = color_RGB_to_xy(255, 128, 0)
+    mock_bridge.api.lights.set_state.assert_called_once_with(
+        RESOURCE_ID,
+        brightness=None,
+        color_temp=None,
+        color_xy=expected_xy,
+    )
+
+
+@pytest.mark.asyncio
+async def test_color_on_non_color_light_skipped(mock_hass, mock_bridge):
+    call = make_service_call({"entity_id": [ENTITY_ID], "xy_color": [0.3, 0.3]})
+    mock_hass.states.get.return_value = make_entity_state(supported_color_modes=["color_temp"])
+
+    with patch_bridge(mock_bridge):
+        await _handle_set_attributes(mock_hass, call)
+
+    # Color not supported — nothing to send
+    mock_bridge.api.lights.set_state.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_color_on_non_color_light_with_brightness(mock_hass, mock_bridge):
+    call = make_service_call({
+        "entity_id": [ENTITY_ID],
+        "xy_color": [0.3, 0.3],
+        "brightness": 50,
+    })
+    mock_hass.states.get.return_value = make_entity_state(supported_color_modes=["brightness"])
+
+    with patch_bridge(mock_bridge):
+        await _handle_set_attributes(mock_hass, call)
+
+    # Color skipped, brightness still sent
+    mock_bridge.api.lights.set_state.assert_called_once_with(
+        RESOURCE_ID,
+        brightness=50.0,
+        color_temp=None,
+        color_xy=None,
+    )
+
+
+@pytest.mark.asyncio
+async def test_color_priority_xy_wins_over_hs(mock_hass, mock_bridge):
+    call = make_service_call({
+        "entity_id": [ENTITY_ID],
+        "xy_color": [0.3, 0.3],
+        "hs_color": [30, 80],
+    })
+    mock_hass.states.get.return_value = make_entity_state(supported_color_modes=["xy"])
+
+    with patch_bridge(mock_bridge):
+        await _handle_set_attributes(mock_hass, call)
+
+    mock_bridge.api.lights.set_state.assert_called_once_with(
+        RESOURCE_ID,
+        brightness=None,
+        color_temp=None,
+        color_xy=(0.3, 0.3),
+    )
+
+
+@pytest.mark.asyncio
+async def test_color_in_group(mock_hass, mock_bridge):
+    call = make_service_call({"entity_id": [ENTITY_ID], "xy_color": [0.369, 0.445]})
+    mock_hass.states.get.return_value = make_entity_state(supported_color_modes=["xy"])
+
+    light1 = MagicMock()
+    light1.id = "light-1"
+    light2 = MagicMock()
+    light2.id = "light-2"
+    mock_bridge.api.groups.grouped_light.get_lights.return_value = [light1, light2]
+
+    with patch_bridge(mock_bridge, resource_type="grouped_light"):
+        await _handle_set_attributes(mock_hass, call)
+
+    assert mock_bridge.api.lights.set_state.call_count == 2
+    for c in mock_bridge.api.lights.set_state.call_args_list:
+        assert c.kwargs["color_xy"] == (0.369, 0.445)
+        assert c.kwargs["color_temp"] is None
+        assert c.kwargs["brightness"] is None
+
+
+@pytest.mark.asyncio
+async def test_brightness_ct_and_color_together(mock_hass, mock_bridge):
+    call = make_service_call({
+        "entity_id": [ENTITY_ID],
+        "brightness": 60,
+        "color_temp_kelvin": 3000,
+        "xy_color": [0.4, 0.4],
+    })
+    mock_hass.states.get.return_value = make_entity_state(
+        supported_color_modes=["color_temp", "xy"],
+        min_color_temp_kelvin=2202,
+        max_color_temp_kelvin=6535,
+    )
+
+    with patch_bridge(mock_bridge):
+        await _handle_set_attributes(mock_hass, call)
+
+    mock_bridge.api.lights.set_state.assert_called_once_with(
+        RESOURCE_ID,
+        brightness=60.0,
+        color_temp=333,
+        color_xy=(0.4, 0.4),
+    )
