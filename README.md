@@ -9,8 +9,8 @@ This integration extends the core Philips Hue integration and lets you:
 ## How It Helps You 🔅💡🔆
 
 * **Silky Smooth:** Dimming is continuous and precise. No more jittery repeat loops and dimming overshoots.
-* **Predictable:** Prepare your lights to turn on how you want them. Fewer dazzles, fumbles in the dark and unwanted color changes when lights turn on.
-* **Zero Setup:** Connects to your lights automatically via the core Philips Hue integration.
+* **Predictable:** Prepare your lights to turn on how you want them. Fewer flashes or fumbles in the dark when lights turn on.
+* **Zero Setup:** Finds your lights automatically via the core Philips Hue integration.
 
 ## Get Started
 
@@ -73,7 +73,7 @@ buttons_released:
 | Action | Description |
 | :--- | :--- |
 | `hue_dimmer.set_attributes` | Set brightness, color temp, or color without turning on |
-| `hue_dimmer.get_attributes` | Get brightness, color temp, and color (RGB, HS, XY), even while lights are off. Returns one record per target |
+| `hue_dimmer.get_attributes` | Get brightness, and color temp and color (RGB, HS, XY) when supported, even while lights are off. Returns one record per target |
 
 | Field | Description |
 | :--- | :--- |

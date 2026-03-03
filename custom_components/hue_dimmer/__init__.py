@@ -410,13 +410,14 @@ async def _handle_get_attributes(hass: HomeAssistant, call: ServiceCall) -> Serv
         else:
             hs = rgb = None
 
-        result[entity_id] = {
-            "brightness": round(brightness, 1),
-            "color_temp_kelvin": color_temp_kelvin,
-            "rgb_color": list(rgb) if rgb else None,
-            "hs_color": list(hs) if hs else None,
-            "color_xy": list(color_xy) if color_xy else None,
-        }
+        attrs: dict = {"brightness": round(brightness, 1)}
+        if color_temp_kelvin is not None:
+            attrs["color_temp_kelvin"] = color_temp_kelvin
+        if color_xy is not None:
+            attrs["color_xy"] = list(color_xy)
+            attrs["rgb_color"] = list(rgb)
+            attrs["hs_color"] = list(hs)
+        result[entity_id] = attrs
 
     return result
 
