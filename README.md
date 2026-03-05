@@ -1,15 +1,15 @@
 # Philips Hue Smooth Dimmer
 
-[![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/) ![Installs](https://img.shields.io/badge/dynamic/json?color=blue&label=Installs&query=hue_dimmer.total&url=https://analytics.home-assistant.io/custom_integrations.json)![Latest Version](https://img.shields.io/github/v/release/jasonmx/philips-hue-smooth-dimmer)
+[![HACS Default](https://img.shields.io/badge/HACS-Default-orange.svg)](https://hacs.xyz/) ![Installs](https://img.shields.io/badge/dynamic/json?color=blue&label=Installs&query=hue_dimmer.total&url=https://analytics.home-assistant.io/custom_integrations.json) ![Latest Version](https://img.shields.io/github/v/release/jasonmx/philips-hue-smooth-dimmer)
 
 This integration extends the core Philips Hue integration and lets you:
 * Use third-party buttons to dim your Hue lights smoothly.
-* Change turn-on brightness, color temp or color while lights are off.
+* Set brightness, color and color temp while lights are off.
 
 ## How It Helps You 🔅💡🔆
 
 * **Silky Smooth:** Dimming is continuous and precise. No more jittery repeat loops and dimming overshoots.
-* **Predictable:** Prepare your lights to turn on how you want them. Fewer flashes or fumbles in the dark when lights turn on.
+* **Predictable:** Prepare your lights to turn on how you want them. No more color flashes or brightness extremes as lights turn on.
 * **Zero Setup:** Finds your lights automatically via the core Philips Hue integration.
 
 ## Get Started
@@ -65,15 +65,15 @@ buttons_released:
 
 ---
 
-### Set Brightness, Color Temp Or Color While Light Is Off
+### Set Brightness, Color & Color Temperature While Light Is Off
 
-* Reduce turn-on surprises after lights are turned off very bright or very dim
-* Achieve consistent turn-on behavior across your home and automations
+* Eliminate color flashes and brightness extremes when lights turn on
+* Apply a consistent turn-on behavior across your home and automations
 
 | Action | Description |
 | :--- | :--- |
 | `hue_dimmer.set_attributes` | Set brightness, color temp, or color without turning on |
-| `hue_dimmer.get_attributes` | Get brightness, and color temp and color (RGB, HS, XY) when supported, even while lights are off. Returns one record per target |
+| `hue_dimmer.get_attributes` | Get brightness, color temp and color (RGB, HS, XY), even while lights are off. Returns one record per target |
 
 | Field | Description |
 | :--- | :--- |
@@ -104,7 +104,7 @@ To set up this automation:
 
 ```yaml
 description: >
-  When lights turn off, set brightness and/or color temperature for next turn-on.
+  When lights turn off for an hour, set brightness for next turn-on.
 triggers:
   - trigger: state
     entity_id: []
