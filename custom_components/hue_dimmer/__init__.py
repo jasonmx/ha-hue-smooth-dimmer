@@ -5,6 +5,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.service import async_extract_entity_ids
+from homeassistant.util.color import color_hs_to_xy, color_RGB_to_xy, color_xy_to_hs, color_xy_to_RGB
 
 from .const import (
     API_SETTLE_SECONDS,
@@ -223,38 +224,63 @@ def _get_cached_brightness(bridge, resource_type, resource_id):
 
 
 def _get_cached_light_attributes(bridge, light_id):
-    # Read brightness and CT from aiohue's cached light model (sync).
+    # Read brightness, CT, and XY color from aiohue's cached light model (sync).
     model = bridge.api.lights.get(light_id)
     if not model:
-        return 0.0, None
+        return 0.0, None, None
     brightness = model.dimming.brightness if model.dimming else 0.0
     mirek = model.color_temperature.mirek if model.color_temperature else None
     color_temp_kelvin = round(1_000_000 / mirek) if mirek else None
-    return brightness, color_temp_kelvin
+    color_xy = (round(model.color.xy.x, 4), round(model.color.xy.y, 4)) if model.color else None
+    return brightness, color_temp_kelvin, color_xy
 
 
 def _get_cached_group_attributes(bridge, grouped_light_id):
-    # Aggregate brightness and CT from individual lights in a group (sync).
-    # Groups don't report CT, and report brightness as 0 when off.
+    # Aggregate brightness, CT, and XY color from individual lights in a group (sync).
+    # Groups don't report CT or color directly, and report brightness as 0 when off.
     lights = bridge.api.groups.grouped_light.get_lights(grouped_light_id)
     if not lights:
-        return 0.0, None
+        return 0.0, None, None
 
-    brightnesses = []
-    mireks = []
+    brightnesses, mireks, xs, ys = [], [], [], []
     for light in lights:
         if light.dimming:
             brightnesses.append(light.dimming.brightness)
         if light.color_temperature and light.color_temperature.mirek:
             mireks.append(light.color_temperature.mirek)
+        if light.color:
+            xs.append(light.color.xy.x)
+            ys.append(light.color.xy.y)
 
     avg_brightness = sum(brightnesses) / len(brightnesses) if brightnesses else 0.0
-    if mireks:
-        avg_mirek = round(sum(mireks) / len(mireks))
-        avg_ct_kelvin = round(1_000_000 / avg_mirek)
-    else:
-        avg_ct_kelvin = None
-    return avg_brightness, avg_ct_kelvin
+    avg_ct_kelvin = round(1_000_000 / round(sum(mireks) / len(mireks))) if mireks else None
+    color_xy = (round(sum(xs) / len(xs), 4), round(sum(ys) / len(ys), 4)) if xs else None
+    return avg_brightness, avg_ct_kelvin, color_xy
+
+
+def _resolve_color_xy(hass, entity_id, xy_color, hs_color, rgb_color):
+    # Convert whichever color format was provided to an XY tuple.
+    # Priority: rgb_color > hs_color > xy_color. Warns if more than one is set.
+    provided = [f for f in [rgb_color, hs_color, xy_color] if f is not None]
+    if not provided:
+        return None
+    if len(provided) > 1:
+        _LOGGER.warning(
+            "set_attributes: multiple color fields set for %s; using rgb_color > hs_color > xy_color priority.",
+            entity_id,
+        )
+
+    state = hass.states.get(entity_id)
+    supported_modes = state.attributes.get("supported_color_modes", []) if state else []
+    if "xy" not in supported_modes:
+        _LOGGER.warning("Entity %s does not support XY color. Skipping color.", entity_id)
+        return None
+
+    if rgb_color is not None:
+        return color_RGB_to_xy(int(rgb_color[0]), int(rgb_color[1]), int(rgb_color[2]))
+    if hs_color is not None:
+        return color_hs_to_xy(float(hs_color[0]), float(hs_color[1]))
+    return (float(xy_color[0]), float(xy_color[1]))
 
 
 def _resolve_color_temp(hass, entity_id, color_temp_kelvin):
@@ -275,7 +301,7 @@ def _resolve_color_temp(hass, entity_id, color_temp_kelvin):
     return round(1_000_000 / clamped_k)
 
 
-async def _send_set_attributes(bridge, resource_type, resource_id, brightness, color_temp_mirek):
+async def _send_set_attributes(bridge, resource_type, resource_id, brightness, color_temp_mirek, color_xy):
     # For groups, send to each individual light so attributes apply even when off.
     if resource_type == "grouped_light":
         light_ids = _resolve_group_light_ids(bridge, resource_id)
@@ -291,6 +317,7 @@ async def _send_set_attributes(bridge, resource_type, resource_id, brightness, c
                 light_id,
                 brightness=float(brightness) if brightness is not None else None,
                 color_temp=color_temp_mirek,
+                color_xy=color_xy,
             )
         except Exception as exc:
             _LOGGER.error("set_attributes failed for light %s: %s", light_id, exc)
@@ -317,12 +344,16 @@ async def _handle_set_attributes(hass: HomeAssistant, call: ServiceCall):
     min_brightness = _positive_or_none(call.data.get("min_brightness"))
     max_brightness = _positive_or_none(call.data.get("max_brightness"))
     color_temp_kelvin = _positive_or_none(call.data.get("color_temp_kelvin"))
+    xy_color = call.data.get("xy_color")
+    hs_color = call.data.get("hs_color")
+    rgb_color = call.data.get("rgb_color")
 
     has_explicit = brightness is not None
     has_clamp = min_brightness is not None or max_brightness is not None
     has_ct = color_temp_kelvin is not None
+    has_color = xy_color is not None or hs_color is not None or rgb_color is not None
 
-    if not has_explicit and not has_clamp and not has_ct:
+    if not has_explicit and not has_clamp and not has_ct and not has_color:
         _LOGGER.warning("set_attributes called with no attributes to set.")
         return
 
@@ -340,14 +371,17 @@ async def _handle_set_attributes(hass: HomeAssistant, call: ServiceCall):
             current = resolve_brightness(hass, entity_id)
             if current < 0.1:
                 if resource_type == "grouped_light":
-                    current, _ = _get_cached_group_attributes(bridge, resource_id)
+                    current, _, _ = _get_cached_group_attributes(bridge, resource_id)
                 else:
                     current = _get_cached_brightness(bridge, resource_type, resource_id)
             entity_brightness = _clamp_brightness(current, min_brightness, max_brightness)
 
         color_temp_mirek = _resolve_color_temp(hass, entity_id, color_temp_kelvin) if has_ct else None
-        if entity_brightness is not None or color_temp_mirek is not None:
-            await _send_set_attributes(bridge, resource_type, resource_id, entity_brightness, color_temp_mirek)
+        color_xy = _resolve_color_xy(hass, entity_id, xy_color, hs_color, rgb_color) if has_color else None
+        if entity_brightness is not None or color_temp_mirek is not None or color_xy is not None:
+            await _send_set_attributes(
+                bridge, resource_type, resource_id, entity_brightness, color_temp_mirek, color_xy
+            )
 
 
 async def _handle_get_attributes(hass: HomeAssistant, call: ServiceCall) -> ServiceResponse:
@@ -361,19 +395,29 @@ async def _handle_get_attributes(hass: HomeAssistant, call: ServiceCall) -> Serv
             continue
 
         if resource_type == "grouped_light":
-            brightness, color_temp_kelvin = _get_cached_group_attributes(bridge, resource_id)
+            brightness, color_temp_kelvin, color_xy = _get_cached_group_attributes(bridge, resource_id)
         else:
             # Brightness: cache/HA first, aiohue cache fallback
             brightness = resolve_brightness(hass, entity_id)
             if brightness < 0.1:
                 brightness = _get_cached_brightness(bridge, resource_type, resource_id)
-            # CT: always from aiohue cache (HA doesn't retain CT when off)
-            _, color_temp_kelvin = _get_cached_light_attributes(bridge, resource_id)
+            # CT and color: always from aiohue cache (HA doesn't retain these when off)
+            _, color_temp_kelvin, color_xy = _get_cached_light_attributes(bridge, resource_id)
 
-        result[entity_id] = {
-            "brightness": round(brightness, 1),
-            "color_temp_kelvin": color_temp_kelvin,
-        }
+        if color_xy:
+            hs = color_xy_to_hs(*color_xy)
+            rgb = color_xy_to_RGB(*color_xy)
+        else:
+            hs = rgb = None
+
+        attrs: dict = {"brightness": round(brightness, 1)}
+        if color_temp_kelvin is not None:
+            attrs["color_temp_kelvin"] = color_temp_kelvin
+        if color_xy is not None:
+            attrs["color_xy"] = list(color_xy)
+            attrs["rgb_color"] = list(rgb)
+            attrs["hs_color"] = list(hs)
+        result[entity_id] = attrs
 
     return result
 

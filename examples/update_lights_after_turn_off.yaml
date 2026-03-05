@@ -9,11 +9,11 @@
 # 1. Go to Settings > Automations
 # 2. Click "Create automation" and choose "Create new automation"
 # 3. Open the ⋮ menu and switch to "Edit in YAML" view
-# 4. Copy the YAML below and paste it into the YAML editor (replacing the existing YAML)
+# 4. Copy-paste the YAML below into the editor (replacing existing YAML)
 # 5. Switch back to "Edit in visual editor" view
 # 6. Click "When something changes" entry and select your Hue light(s).
 #    Tip: search for "light" to filter the entities.
-# 7. Click "Set turn-on behavior" entry and edit the brightness/CT settings.
+# 7. Click the "Set turn-on behavior" entry and choose your settings.
 #    Don't touch the Targets section.
 # 8. Click "Save"
 #
@@ -22,13 +22,13 @@
 # Each light turning off triggers a parallel run of the automation. If you add
 # more than 10 lights to this automation, increase "max: 10" accordingly.
 #
-# Hue lights take 400ms to turn off, hence the 1s delay to hold color temperature
-# steady until the light dims to zero.
+# Hue lights take 400ms to turn off, so use a minimum delay of 1s to hold
+# color and color temperature steady while the light fades to off.
 
 
 alias: Update Hue lights after turning off
 description: >
-  When lights turn off, set brightness and/or color temperature for next turn-on.
+  When lights turn off for an hour, set brightness for next turn-on.
 triggers:
   - trigger: state
     entity_id: []
@@ -37,16 +37,16 @@ triggers:
     to:
       - "off"
     for:
-      hours: 0
+      hours: 1
       minutes: 0
-      seconds: 1
+      seconds: 0
 actions:
   - action: hue_dimmer.set_attributes
     target:
       entity_id: "{{ trigger.entity_id }}"
     data:
       max_brightness: 80
-      min_brightness: 25
+      min_brightness: 30
       alias: Set turn-on behavior for the lights
 mode: parallel
 max: 10
